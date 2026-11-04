@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 
 import 'data/products.dart';
+
+import 'dart:math';
+
 import 'models/product.dart';
+import 'models/order.dart';
 import 'pages/cart_page.dart';
+import 'pages/login_page.dart';
+import 'pages/order_history_page.dart';
+import 'pages/payment_page.dart';
 import 'widgets/product_card.dart';
 
 void main() {
@@ -24,7 +31,11 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFFFFBF7),
         useMaterial3: true,
       ),
-      home: const CatalogPage(),
+      home: LoginPage(
+        (context) => Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(builder: (context) => const CatalogPage()),
+        ),
+      ),
     );
   }
 }
@@ -40,6 +51,7 @@ class _CatalogPageState extends State<CatalogPage> {
   String _selectedCategory = 'Todos';
   String _searchQuery = '';
   final Map<Product, int> _cartItems = {};
+  final List<Order> _orders = [];
 
   int get _cartCount =>
       _cartItems.values.fold(0, (total, quantity) => total + quantity);
@@ -47,8 +59,7 @@ class _CatalogPageState extends State<CatalogPage> {
   List<Product> get _filteredProducts {
     return products.where((product) {
       final matchesCategory =
-          _selectedCategory == 'Todos' ||
-          product.category == _selectedCategory;
+          _selectedCategory == 'Todos' || product.category == _selectedCategory;
       final query = _searchQuery.toLowerCase();
       final matchesSearch =
           product.name.toLowerCase().contains(query) ||
@@ -60,11 +71,7 @@ class _CatalogPageState extends State<CatalogPage> {
 
   void _addToCart(Product product) {
     setState(() {
-      _cartItems.update(
-        product,
-        (quantity) => quantity + 1,
-        ifAbsent: () => 1,
-      );
+      _cartItems.update(product, (quantity) => quantity + 1, ifAbsent: () => 1);
     });
   }
 
@@ -80,7 +87,37 @@ class _CatalogPageState extends State<CatalogPage> {
         builder: (context) => CartPage(
           items: _cartItems,
           onRemove: _removeFromCart,
+          onComplete: _openPayment,
         ),
+      ),
+    );
+  }
+
+  void _openPayment(Map<Product, int> items) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => PaymentPage(items, _createOrder),
+      ),
+    );
+  }
+
+  Order _createOrder(String paymentMethod) {
+    final order = Order(
+      _cartItems,
+      paymentMethod,
+      '#${Random.secure().nextInt(9000) + 1000}',
+    );
+    setState(() {
+      _orders.add(order);
+      _cartItems.clear();
+    });
+    return order;
+  }
+
+  void _openOrderHistory() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => OrderHistoryPage(List.unmodifiable(_orders)),
       ),
     );
   }
@@ -108,10 +145,7 @@ class _CatalogPageState extends State<CatalogPage> {
                 ],
               ),
               child: ClipOval(
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  fit: BoxFit.cover,
-                ),
+                child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
               ),
             ),
             SizedBox(width: 10),
@@ -119,6 +153,11 @@ class _CatalogPageState extends State<CatalogPage> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Mis pedidos',
+            onPressed: _openOrderHistory,
+            icon: const Icon(Icons.receipt_long_outlined),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: Center(
@@ -160,16 +199,14 @@ class _CatalogPageState extends State<CatalogPage> {
             const SizedBox(height: 22),
             Text(
               '¿Qué se te antoja?',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(context).textTheme.headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
             Text(
               'Elegí algo rico para disfrutar',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.black54,
-                  ),
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(color: Colors.black54),
             ),
             const SizedBox(height: 18),
             SizedBox(
@@ -177,8 +214,7 @@ class _CatalogPageState extends State<CatalogPage> {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: categories.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(width: 8),
+                separatorBuilder: (context, index) => const SizedBox(width: 8),
                 itemBuilder: (context, index) {
                   final category = categories[index];
                   return ChoiceChip(
@@ -199,15 +235,13 @@ class _CatalogPageState extends State<CatalogPage> {
               children: [
                 Text(
                   'Nuestro menú',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: Theme.of(context).textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 Text(
                   '${visibleProducts.length} productos',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.black54,
-                      ),
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: Colors.black54),
                 ),
               ],
             ),
@@ -222,17 +256,14 @@ class _CatalogPageState extends State<CatalogPage> {
                       itemCount: visibleProducts.length,
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 14,
-                        mainAxisSpacing: 14,
-                        childAspectRatio: 0.68,
-                      ),
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 14,
+                            mainAxisSpacing: 14,
+                            childAspectRatio: 0.68,
+                          ),
                       itemBuilder: (context, index) {
                         final product = visibleProducts[index];
-                        return ProductCard(
-                          product,
-                          () => _addToCart(product),
-                        );
+                        return ProductCard(product, () => _addToCart(product));
                       },
                     ),
             ),
