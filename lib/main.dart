@@ -31,17 +31,33 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFFFFBF7),
         useMaterial3: true,
       ),
-      home: LoginPage(
-        (context) => Navigator.of(context).pushReplacement(
-          MaterialPageRoute<void>(builder: (context) => const CatalogPage()),
-        ),
-      ),
+      home: LoginPage(_showCatalog),
     );
   }
 }
 
+void _showCatalog(BuildContext context) {
+  final navigator = Navigator.of(context);
+  navigator.pushReplacement(
+    MaterialPageRoute<void>(
+      builder: (context) => CatalogPage(
+        onSignOut: () => _showLogin(navigator),
+      ),
+    ),
+  );
+}
+
+void _showLogin(NavigatorState navigator) {
+  navigator.pushAndRemoveUntil(
+    MaterialPageRoute<void>(builder: (context) => LoginPage(_showCatalog)),
+    (route) => false,
+  );
+}
+
 class CatalogPage extends StatefulWidget {
-  const CatalogPage({super.key});
+  const CatalogPage({required this.onSignOut, super.key});
+
+  final VoidCallback onSignOut;
 
   @override
   State<CatalogPage> createState() => _CatalogPageState();
@@ -127,29 +143,78 @@ class _CatalogPageState extends State<CatalogPage> {
     final visibleProducts = _filteredProducts;
 
     return Scaffold(
+      drawer: Drawer(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    ClipOval(
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        width: 72,
+                        height: 72,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Al Toque',
+                      style: Theme.of(context).textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.logout),
+                title: const Text('Cerrar sesión'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  widget.onSignOut();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
       appBar: AppBar(
         title: Row(
           children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.16),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+            Builder(
+              builder: (context) => IconButton(
+                tooltip: 'Abrir menú',
+                onPressed: () => Scaffold.of(context).openDrawer(),
+                padding: EdgeInsets.zero,
+                icon: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.16),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: ClipOval(
-                child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
               ),
             ),
-            SizedBox(width: 10),
-            Text('Al Toque'),
+            const SizedBox(width: 10),
+            const Text('Al Toque'),
           ],
         ),
         actions: [
