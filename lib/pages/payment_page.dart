@@ -4,20 +4,39 @@ import '../models/order.dart';
 import '../models/product.dart';
 import 'order_confirmation_page.dart';
 
-class PaymentPage extends StatelessWidget {
+class PaymentPage extends StatefulWidget {
   const PaymentPage(this.items, this.onSelectPayment, {super.key});
 
   final Map<Product, int> items;
-  final Order Function(String) onSelectPayment;
+  final Future<Order> Function(String) onSelectPayment;
 
-  void _selectPayment(BuildContext context, String method) {
-    final order = onSelectPayment(method);
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(
-        builder: (context) => OrderConfirmationPage(order),
-      ),
-      (route) => route.isFirst,
-    );
+  @override
+  State<PaymentPage> createState() => _PaymentPageState();
+}
+
+class _PaymentPageState extends State<PaymentPage> {
+  bool _isSubmitting = false;
+
+  Future<void> _selectPayment(String method) async {
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
+    try {
+      final order = await widget.onSelectPayment(method);
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute<void>(
+          builder: (context) => OrderConfirmationPage(order),
+        ),
+        (route) => route.isFirst,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo registrar el pedido: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   @override
@@ -41,13 +60,15 @@ class PaymentPage extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '${items.values.fold(0, (total, quantity) => total + quantity)} '
+              '${widget.items.values.fold(0, (total, quantity) => total + quantity)} '
               'productos en el pedido',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: () => _selectPayment(context, 'En el buffet'),
+              onPressed: _isSubmitting
+                  ? null
+                  : () => _selectPayment('En el buffet'),
               icon: const Icon(Icons.payments_outlined),
               label: const Text('Pagar en físico'),
               style: FilledButton.styleFrom(
@@ -59,7 +80,9 @@ class PaymentPage extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             OutlinedButton.icon(
-              onPressed: () => _selectPayment(context, 'Billetera virtual'),
+              onPressed: _isSubmitting
+                  ? null
+                  : () => _selectPayment('Billetera virtual'),
               icon: const Icon(Icons.account_balance_wallet_outlined),
               label: const Text('Billetera virtual'),
               style: OutlinedButton.styleFrom(
@@ -69,6 +92,10 @@ class PaymentPage extends StatelessWidget {
                 ),
               ),
             ),
+            if (_isSubmitting) ...[
+              const SizedBox(height: 12),
+              const Center(child: CircularProgressIndicator()),
+            ],
           ],
         ),
       ),

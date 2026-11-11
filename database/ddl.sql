@@ -41,9 +41,12 @@ CREATE TABLE IF NOT EXISTS pedidos (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   usuario_id INT UNSIGNED NOT NULL,
   estado VARCHAR(30) NOT NULL DEFAULT 'pendiente',
+  metodo_pago VARCHAR(40) NOT NULL DEFAULT '',
+  codigo_retiro VARCHAR(12) NULL,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY ix_pedidos_usuario (usuario_id),
+  UNIQUE KEY uq_pedidos_codigo_retiro (codigo_retiro),
   CONSTRAINT fk_pedidos_usuario
     FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
 ) ENGINE = InnoDB;

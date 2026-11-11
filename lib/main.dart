@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 
 import 'data/products.dart';
 
-import 'dart:math';
-
 import 'models/product.dart';
 import 'models/order.dart';
 import 'pages/cart_page.dart';
 import 'pages/login_page.dart';
 import 'pages/order_history_page.dart';
 import 'pages/payment_page.dart';
+import 'services/api_service.dart';
 import 'widgets/product_card.dart';
 
 void main() {
@@ -40,9 +39,7 @@ void _showCatalog(BuildContext context) {
   final navigator = Navigator.of(context);
   navigator.pushReplacement(
     MaterialPageRoute<void>(
-      builder: (context) => CatalogPage(
-        onSignOut: () => _showLogin(navigator),
-      ),
+      builder: (context) => CatalogPage(onSignOut: () => _showLogin(navigator)),
     ),
   );
 }
@@ -66,14 +63,44 @@ class CatalogPage extends StatefulWidget {
 class _CatalogPageState extends State<CatalogPage> {
   String _selectedCategory = 'Todos';
   String _searchQuery = '';
+  List<Product> _products = [];
+  bool _isLoadingProducts = true;
+  String? _productsError;
   final Map<Product, int> _cartItems = {};
-  final List<Order> _orders = [];
 
   int get _cartCount =>
       _cartItems.values.fold(0, (total, quantity) => total + quantity);
 
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    setState(() {
+      _isLoadingProducts = true;
+      _productsError = null;
+    });
+
+    try {
+      final products = await ApiService.instance.getProducts();
+      if (!mounted) return;
+      setState(() {
+        _products = products;
+        _isLoadingProducts = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _productsError = error.toString();
+        _isLoadingProducts = false;
+      });
+    }
+  }
+
   List<Product> get _filteredProducts {
-    return products.where((product) {
+    return _products.where((product) {
       final matchesCategory =
           _selectedCategory == 'Todos' || product.category == _selectedCategory;
       final query = _searchQuery.toLowerCase();
@@ -112,30 +139,39 @@ class _CatalogPageState extends State<CatalogPage> {
   void _openPayment(Map<Product, int> items) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (context) => PaymentPage(items, _createOrder),
+        builder: (context) => PaymentPage(
+          items,
+          (paymentMethod) => _createOrder(items, paymentMethod),
+        ),
       ),
     );
   }
 
-  Order _createOrder(String paymentMethod) {
-    final order = Order(
-      _cartItems,
-      paymentMethod,
-      '#${Random.secure().nextInt(9000) + 1000}',
-    );
+  Future<Order> _createOrder(
+    Map<Product, int> items,
+    String paymentMethod,
+  ) async {
+    final order = await ApiService.instance.createOrder(items, paymentMethod);
+    if (!mounted) return order;
     setState(() {
-      _orders.add(order);
       _cartItems.clear();
     });
     return order;
   }
 
-  void _openOrderHistory() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) => OrderHistoryPage(List.unmodifiable(_orders)),
-      ),
-    );
+  Future<void> _openOrderHistory() async {
+    try {
+      final orders = await ApiService.instance.getOrders();
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (context) => OrderHistoryPage(orders)),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo cargar el historial: $error')),
+      );
+    }
   }
 
   @override
@@ -312,7 +348,26 @@ class _CatalogPageState extends State<CatalogPage> {
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: visibleProducts.isEmpty
+              child: _isLoadingProducts
+                  ? const Center(child: Text('Conectando con el menú...'))
+                  : _productsError != null
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'No se pudo conectar con el servidor local.',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          TextButton(
+                            onPressed: _loadProducts,
+                            child: const Text('Volver a intentar'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : visibleProducts.isEmpty
                   ? const Center(
                       child: Text('No encontramos productos con esa búsqueda'),
                     )
