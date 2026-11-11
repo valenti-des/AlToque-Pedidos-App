@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 
 import 'data/products.dart';
 
+import 'models/auth_session.dart';
 import 'models/product.dart';
 import 'models/order.dart';
+import 'pages/admin_home_screen.dart';
 import 'pages/cart_page.dart';
 import 'pages/login_page.dart';
 import 'pages/order_history_page.dart';
 import 'pages/payment_page.dart';
+import 'pages/tablero_buffet_screen.dart';
 import 'services/api_service.dart';
 import 'widgets/product_card.dart';
 
@@ -30,30 +33,60 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFFFFBF7),
         useMaterial3: true,
       ),
-      home: LoginPage(_showCatalog),
+      home: LoginPage(
+        onCustomerContinue: _showCatalog,
+        onStaffLogin: _showStaffArea,
+      ),
     );
   }
 }
 
-void _showCatalog(BuildContext context) {
+void _showCatalog(BuildContext context, String customerName, String course) {
+  ApiService.instance.logout();
   final navigator = Navigator.of(context);
   navigator.pushReplacement(
     MaterialPageRoute<void>(
-      builder: (context) => CatalogPage(onSignOut: () => _showLogin(navigator)),
+      builder: (context) => CatalogPage(
+        customerName: customerName,
+        course: course,
+        onSignOut: () => _showLogin(navigator),
+      ),
     ),
   );
 }
 
+void _showStaffArea(BuildContext context, AuthSession session) {
+  final navigator = Navigator.of(context);
+  void onSignOut() => _showLogin(navigator);
+  final page = session.isAdmin
+      ? AdminHomeScreen(onSignOut: onSignOut)
+      : TableroBuffetScreen(onSignOut: onSignOut);
+  navigator.pushReplacement(MaterialPageRoute<void>(builder: (_) => page));
+}
+
 void _showLogin(NavigatorState navigator) {
+  ApiService.instance.logout();
   navigator.pushAndRemoveUntil(
-    MaterialPageRoute<void>(builder: (context) => LoginPage(_showCatalog)),
+    MaterialPageRoute<void>(
+      builder: (context) => LoginPage(
+        onCustomerContinue: _showCatalog,
+        onStaffLogin: _showStaffArea,
+      ),
+    ),
     (route) => false,
   );
 }
 
 class CatalogPage extends StatefulWidget {
-  const CatalogPage({required this.onSignOut, super.key});
+  const CatalogPage({
+    required this.customerName,
+    required this.course,
+    required this.onSignOut,
+    super.key,
+  });
 
+  final String customerName;
+  final String course;
   final VoidCallback onSignOut;
 
   @override
@@ -67,6 +100,7 @@ class _CatalogPageState extends State<CatalogPage> {
   bool _isLoadingProducts = true;
   String? _productsError;
   final Map<Product, int> _cartItems = {};
+  final List<Order> _orders = [];
 
   int get _cartCount =>
       _cartItems.values.fold(0, (total, quantity) => total + quantity);
@@ -141,7 +175,10 @@ class _CatalogPageState extends State<CatalogPage> {
       MaterialPageRoute<void>(
         builder: (context) => PaymentPage(
           items,
-          (paymentMethod) => _createOrder(items, paymentMethod),
+          customerName: widget.customerName,
+          course: widget.course,
+          onSelectPayment: (paymentMethod) =>
+              _createOrder(items, paymentMethod),
         ),
       ),
     );
@@ -151,27 +188,26 @@ class _CatalogPageState extends State<CatalogPage> {
     Map<Product, int> items,
     String paymentMethod,
   ) async {
-    final order = await ApiService.instance.createOrder(items, paymentMethod);
+    final order = await ApiService.instance.createOrder(
+      items,
+      paymentMethod,
+      widget.customerName,
+      widget.course,
+    );
     if (!mounted) return order;
     setState(() {
       _cartItems.clear();
+      _orders.add(order);
     });
     return order;
   }
 
-  Future<void> _openOrderHistory() async {
-    try {
-      final orders = await ApiService.instance.getOrders();
-      if (!mounted) return;
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (context) => OrderHistoryPage(orders)),
-      );
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo cargar el historial: $error')),
-      );
-    }
+  void _openOrderHistory() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => OrderHistoryPage(List.unmodifiable(_orders)),
+      ),
+    );
   }
 
   @override
@@ -357,6 +393,11 @@ class _CatalogPageState extends State<CatalogPage> {
                         children: [
                           const Text(
                             'No se pudo conectar con el servidor local.',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _productsError ?? 'Error desconocido.',
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 8),

@@ -5,9 +5,17 @@ import '../models/product.dart';
 import 'order_confirmation_page.dart';
 
 class PaymentPage extends StatefulWidget {
-  const PaymentPage(this.items, this.onSelectPayment, {super.key});
+  const PaymentPage(
+    this.items, {
+    required this.customerName,
+    required this.course,
+    required this.onSelectPayment,
+    super.key,
+  });
 
   final Map<Product, int> items;
+  final String customerName;
+  final String course;
   final Future<Order> Function(String) onSelectPayment;
 
   @override
@@ -59,6 +67,10 @@ class _PaymentPageState extends State<PaymentPage> {
               'El pago se realiza en el buffet.',
             ),
             const SizedBox(height: 8),
+            Text(
+              'Pedido para ${widget.customerName} · ${widget.course}',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
             Text(
               '${widget.items.values.fold(0, (total, quantity) => total + quantity)} '
               'productos en el pedido',

@@ -6,11 +6,16 @@ USE al_toque;
 
 CREATE TABLE IF NOT EXISTS usuarios (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  nombre_usuario VARCHAR(50) NOT NULL,
+  nombre_usuario VARCHAR(50) NULL,
+  email VARCHAR(254) NULL,
+  nombre VARCHAR(100) NOT NULL DEFAULT '',
+  rol VARCHAR(20) NOT NULL DEFAULT 'cliente',
+  activo BOOLEAN NOT NULL DEFAULT TRUE,
   contrasena_hash VARCHAR(255) NOT NULL,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_usuarios_nombre (nombre_usuario)
+  UNIQUE KEY uq_usuarios_nombre (nombre_usuario),
+  UNIQUE KEY uq_usuarios_email (email)
 ) ENGINE = InnoDB;
 
 CREATE TABLE IF NOT EXISTS categorias (
@@ -40,12 +45,17 @@ CREATE TABLE IF NOT EXISTS productos (
 CREATE TABLE IF NOT EXISTS pedidos (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   usuario_id INT UNSIGNED NOT NULL,
+  cliente_nombre VARCHAR(100) NOT NULL DEFAULT '',
+  cliente_curso VARCHAR(50) NOT NULL DEFAULT '',
   estado VARCHAR(30) NOT NULL DEFAULT 'pendiente',
   metodo_pago VARCHAR(40) NOT NULL DEFAULT '',
   codigo_retiro VARCHAR(12) NULL,
+  token_seguimiento_hash CHAR(64) NULL,
+  motivo_cancelacion VARCHAR(255) NULL,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY ix_pedidos_usuario (usuario_id),
+  KEY ix_pedidos_estado (estado, creado_en),
   UNIQUE KEY uq_pedidos_codigo_retiro (codigo_retiro),
   CONSTRAINT fk_pedidos_usuario
     FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
@@ -56,6 +66,8 @@ CREATE TABLE IF NOT EXISTS productos_pedido (
   producto_id INT UNSIGNED NOT NULL,
   cantidad INT UNSIGNED NOT NULL,
   precio_unitario DECIMAL(10, 2) NOT NULL,
+  estado VARCHAR(20) NOT NULL DEFAULT 'activo',
+  motivo_rechazo VARCHAR(255) NULL,
   PRIMARY KEY (pedido_id, producto_id),
   KEY ix_productos_pedido_producto (producto_id),
   CONSTRAINT fk_productos_pedido_pedido

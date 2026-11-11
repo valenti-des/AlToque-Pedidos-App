@@ -1,73 +1,164 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/order.dart';
+import '../services/api_service.dart';
 
-class OrderHistoryPage extends StatelessWidget {
+class OrderHistoryPage extends StatefulWidget {
   const OrderHistoryPage(this.orders, {super.key});
 
   final List<Order> orders;
 
   @override
+  State<OrderHistoryPage> createState() => _OrderHistoryPageState();
+}
+
+class _OrderHistoryPageState extends State<OrderHistoryPage> {
+  late List<Order> _orders;
+  Timer? _refreshTimer;
+  bool _isRefreshing = false;
+  String? _refreshError;
+
+  @override
+  void initState() {
+    super.initState();
+    _orders = List.of(widget.orders);
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 8),
+      (_) => _refreshStatuses(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refreshStatuses() async {
+    if (_isRefreshing || _orders.isEmpty) return;
+    _isRefreshing = true;
+    try {
+      final updated = await Future.wait(
+        _orders.map(ApiService.instance.refreshOrderStatus),
+      );
+      if (!mounted) return;
+      setState(() {
+        _orders = updated;
+        _refreshError = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _refreshError = error.toString());
+    } finally {
+      _isRefreshing = false;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Mis pedidos')),
-      body: orders.isEmpty
+      appBar: AppBar(
+        title: const Text('Mis pedidos'),
+        actions: [
+          IconButton(
+            tooltip: 'Actualizar estados',
+            onPressed: _refreshStatuses,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
+      body: _orders.isEmpty
           ? const Center(child: Text('Todavía no tienes pedidos confirmados'))
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: orders.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final order = orders[orders.length - index - 1];
-                final itemCount = order.items.values.fold(
-                  0,
-                  (total, quantity) => total + quantity,
-                );
-
-                return Card(
-                  color: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+          : Column(
+              children: [
+                if (_refreshError != null)
+                  MaterialBanner(
+                    content: Text(
+                      'No se pudieron actualizar los estados: $_refreshError',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: _refreshStatuses,
+                        child: const Text('Reintentar'),
+                      ),
+                    ],
                   ),
-                  child: ListTile(
-                    leading: const CircleAvatar(
-                      child: Icon(Icons.receipt_long_outlined),
-                    ),
-                    title: Text('Pedido ${order.pickupCode}'),
-                    subtitle: Text(
-                      '$itemCount productos · ${order.paymentMethod}'
-                      ' · En preparación',
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      showDialog<void>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: Text('Pedido ${order.pickupCode}'),
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              for (final entry in order.items.entries)
-                                Text('${entry.value} × ${entry.key.name}'),
-                              const SizedBox(height: 12),
-                              Text('Pago: ${order.paymentMethod}'),
-                              const Text('Estado: En preparación'),
-                            ],
+                Expanded(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _orders.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final order = _orders[_orders.length - index - 1];
+                      final itemCount = order.items.values.fold(
+                        0,
+                        (total, quantity) => total + quantity,
+                      );
+                      final status = _statusLabel(order.status);
+
+                      return Card(
+                        color: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: ListTile(
+                          leading: const CircleAvatar(
+                            child: Icon(Icons.receipt_long_outlined),
                           ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              child: const Text('Cerrar'),
-                            ),
-                          ],
+                          title: Text('Pedido ${order.pickupCode}'),
+                          subtitle: Text(
+                            '$itemCount productos · ${order.paymentMethod} · $status',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () {
+                            showDialog<void>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: Text('Pedido ${order.pickupCode}'),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    for (final entry in order.items.entries)
+                                      Text(
+                                        '${entry.value} × ${entry.key.name}',
+                                      ),
+                                    const SizedBox(height: 12),
+                                    Text('Pago: ${order.paymentMethod}'),
+                                    Text('Estado: $status'),
+                                    if (order.cancellationReason != null)
+                                      Text(
+                                        'Motivo: ${order.cancellationReason}',
+                                      ),
+                                  ],
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(),
+                                    child: const Text('Cerrar'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         ),
                       );
                     },
                   ),
-                );
-              },
+                ),
+              ],
             ),
     );
   }
 }
+
+String _statusLabel(String status) => switch (status) {
+  'listo' => 'Listo para retirar',
+  'cancelado' => 'Cancelado',
+  'en_preparacion' => 'En preparación',
+  _ => 'Pendiente',
+};

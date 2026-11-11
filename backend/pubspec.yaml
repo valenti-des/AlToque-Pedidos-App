@@ -6,4 +6,7 @@ environment:
   sdk: ^3.13.7
 
 dependencies:
+  crypto: ^3.0.8
   mysql1: ^0.20.0
+dev_dependencies:
+  test: ^1.33.0

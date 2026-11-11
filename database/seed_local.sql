@@ -1,7 +1,7 @@
 USE al_toque;
 
-INSERT INTO usuarios (nombre_usuario, contrasena_hash)
-VALUES ('pedido_local', SHA2(UUID(), 256))
+INSERT INTO usuarios (nombre_usuario, nombre, rol, contrasena_hash)
+VALUES ('pedido_local', 'Pedidos locales', 'cliente', SHA2(UUID(), 256))
 ON DUPLICATE KEY UPDATE nombre_usuario = VALUES(nombre_usuario);
 
 INSERT INTO categorias (nombre)

@@ -3,7 +3,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../basedate.dart';
+import '../models/auth_session.dart';
+import '../models/empleado.dart';
 import '../models/order.dart';
+import '../models/pedido.dart';
 import '../models/product.dart';
 
 class ApiService {
@@ -12,6 +15,29 @@ class ApiService {
   static final ApiService instance = ApiService._();
 
   final http.Client _client = http.Client();
+  String? _authToken;
+
+  Future<AuthSession> login(String email, String password) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/auth/login'),
+          headers: const {'content-type': 'application/json'},
+          body: jsonEncode({'email': email, 'password': password}),
+        )
+        .timeout(const Duration(seconds: 10));
+    final data = _decodeResponse(response);
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('La API devolvió una sesión inválida.');
+    }
+
+    final session = AuthSession.fromJson(data);
+    _authToken = session.token;
+    return session;
+  }
+
+  void logout() {
+    _authToken = null;
+  }
 
   Future<List<Product>> getProducts() async {
     final response = await _client
@@ -30,6 +56,8 @@ class ApiService {
   Future<Order> createOrder(
     Map<Product, int> items,
     String paymentMethod,
+    String customerName,
+    String course,
   ) async {
     final response = await _client
         .post(
@@ -37,6 +65,8 @@ class ApiService {
           headers: const {'content-type': 'application/json'},
           body: jsonEncode({
             'paymentMethod': paymentMethod,
+            'customerName': customerName,
+            'course': course,
             'items': [
               for (final entry in items.entries)
                 {'productId': entry.key.id, 'quantity': entry.value},
@@ -49,21 +79,131 @@ class ApiService {
       throw const FormatException('La API devolvió un pedido inválido.');
     }
 
-    return Order(items, paymentMethod, data['pickupCode'] as String);
+    return Order(
+      id: data['id'] as int,
+      items: items,
+      paymentMethod: paymentMethod,
+      pickupCode: data['pickupCode'] as String,
+      trackingToken: data['trackingToken'] as String,
+      customerName: customerName,
+      course: course,
+    );
   }
 
-  Future<List<Order>> getOrders() async {
+  Future<Order> refreshOrderStatus(Order order) async {
     final response = await _client
-        .get(Uri.parse('${ApiConfig.baseUrl}/orders'))
+        .get(
+          Uri.parse('${ApiConfig.baseUrl}/orders/${order.id}/status'),
+          headers: {'x-order-token': order.trackingToken},
+        )
+        .timeout(const Duration(seconds: 10));
+    final data = _decodeResponse(response);
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('La API devolvió un estado inválido.');
+    }
+    return order.copyWith(
+      status: data['status'] as String,
+      cancellationReason: data['cancellationReason'] as String?,
+    );
+  }
+
+  Future<List<Pedido>> getAdminOrders() async {
+    final response = await _client
+        .get(
+          Uri.parse('${ApiConfig.baseUrl}/admin/orders'),
+          headers: _authorizedHeaders(),
+        )
         .timeout(const Duration(seconds: 10));
     final data = _decodeResponse(response);
     if (data is! List) {
-      throw const FormatException('La API devolvió un historial inválido.');
+      throw const FormatException('La API devolvió pedidos inválidos.');
     }
 
     return data
-        .map((item) => Order.fromJson(item as Map<String, dynamic>))
+        .map((item) => Pedido.fromJson(item as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<void> markOrderReady(int orderId) async {
+    final response = await _client
+        .patch(
+          Uri.parse('${ApiConfig.baseUrl}/admin/orders/$orderId/ready'),
+          headers: _authorizedHeaders(),
+        )
+        .timeout(const Duration(seconds: 10));
+    _decodeResponse(response);
+  }
+
+  Future<void> cancelOrder(int orderId, String reason) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/admin/orders/$orderId/cancel'),
+          headers: _authorizedHeaders(json: true),
+          body: jsonEncode({'reason': reason}),
+        )
+        .timeout(const Duration(seconds: 10));
+    _decodeResponse(response);
+  }
+
+  Future<void> rejectOrderItem(int orderId, int productId) async {
+    final response = await _client
+        .post(
+          Uri.parse(
+            '${ApiConfig.baseUrl}/admin/orders/$orderId/items/$productId/reject',
+          ),
+          headers: _authorizedHeaders(),
+        )
+        .timeout(const Duration(seconds: 10));
+    _decodeResponse(response);
+  }
+
+  Future<List<Empleado>> getEmployees() async {
+    final response = await _client
+        .get(
+          Uri.parse('${ApiConfig.baseUrl}/admin/employees'),
+          headers: _authorizedHeaders(),
+        )
+        .timeout(const Duration(seconds: 10));
+    final data = _decodeResponse(response);
+    if (data is! List) {
+      throw const FormatException('La API devolvió empleados inválidos.');
+    }
+
+    return data
+        .map((item) => Empleado.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<void> createEmployee(String email, String password) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/admin/employees'),
+          headers: _authorizedHeaders(json: true),
+          body: jsonEncode({'email': email, 'password': password}),
+        )
+        .timeout(const Duration(seconds: 10));
+    _decodeResponse(response);
+  }
+
+  Future<void> deleteEmployee(int employeeId) async {
+    final response = await _client
+        .delete(
+          Uri.parse('${ApiConfig.baseUrl}/admin/employees/$employeeId'),
+          headers: _authorizedHeaders(),
+        )
+        .timeout(const Duration(seconds: 10));
+    _decodeResponse(response);
+  }
+
+  Map<String, String> _authorizedHeaders({bool json = false}) {
+    final token = _authToken;
+    if (token == null) {
+      throw const ApiException('Inicia sesión para realizar esta acción.');
+    }
+    return {
+      if (json) 'content-type': 'application/json',
+      'authorization': 'Bearer $token',
+    };
   }
 
   Object _decodeResponse(http.Response response) {
@@ -80,7 +220,6 @@ class ApiService {
           : 'Error HTTP ${response.statusCode}';
       throw ApiException(message);
     }
-
     return data;
   }
 }
