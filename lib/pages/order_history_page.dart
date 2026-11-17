@@ -24,6 +24,9 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
   void initState() {
     super.initState();
     _orders = List.of(widget.orders);
+    if (ApiService.instance.isCustomerAuthenticated) {
+      _refreshStatuses();
+    }
     _refreshTimer = Timer.periodic(
       const Duration(seconds: 8),
       (_) => _refreshStatuses(),
@@ -37,12 +40,15 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
   }
 
   Future<void> _refreshStatuses() async {
-    if (_isRefreshing || _orders.isEmpty) return;
+    final isCustomer = ApiService.instance.isCustomerAuthenticated;
+    if (_isRefreshing || (!isCustomer && _orders.isEmpty)) return;
     _isRefreshing = true;
     try {
-      final updated = await Future.wait(
-        _orders.map(ApiService.instance.refreshOrderStatus),
-      );
+      final updated = isCustomer
+          ? await ApiService.instance.getCustomerOrders()
+          : await Future.wait(
+              _orders.map(ApiService.instance.refreshOrderStatus),
+            );
       if (!mounted) return;
       setState(() {
         _orders = updated;
@@ -70,7 +76,24 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
         ],
       ),
       body: _orders.isEmpty
-          ? const Center(child: Text('Todavía no tienes pedidos confirmados'))
+          ? Center(
+              child: _refreshError != null
+                  ? Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('No se pudo cargar tu historial.'),
+                        const SizedBox(height: 8),
+                        Text(_refreshError!),
+                        TextButton(
+                          onPressed: _refreshStatuses,
+                          child: const Text('Reintentar'),
+                        ),
+                      ],
+                    )
+                  : _isRefreshing
+                  ? const CircularProgressIndicator()
+                  : const Text('Todavía no tienes pedidos confirmados'),
+            )
           : Column(
               children: [
                 if (_refreshError != null)

@@ -42,7 +42,6 @@ class MyApp extends StatelessWidget {
 }
 
 void _showCatalog(BuildContext context, String customerName, String course) {
-  ApiService.instance.logout();
   final navigator = Navigator.of(context);
   navigator.pushReplacement(
     MaterialPageRoute<void>(

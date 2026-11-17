@@ -46,8 +46,17 @@ Future<void> _handleRequest(HttpRequest request) async {
       await _login(request);
       return;
     }
+    if (request.method == 'POST' && request.uri.path == '/auth/register') {
+      await _registerCustomer(request);
+      return;
+    }
     if (request.method == 'GET' && request.uri.path == '/products') {
       await _getProducts(request.response);
+      return;
+    }
+    if (request.method == 'GET' && request.uri.path == '/customer/orders') {
+      final user = await _requireCustomer(request);
+      await _getCustomerOrders(request.response, user.id);
       return;
     }
     if (request.method == 'POST' && request.uri.path == '/orders') {
@@ -198,9 +207,9 @@ Future<void> _login(HttpRequest request) async {
   final connection = await _connectToDatabase();
   try {
     final rows = await connection.query(
-      'SELECT id, email, nombre, rol, contrasena_hash, activo '
-      'FROM usuarios WHERE email = ? AND rol IN (?, ?)',
-      [email.trim().toLowerCase(), 'administrador', 'empleado'],
+      'SELECT id, email, nombre, curso, rol, contrasena_hash, activo '
+      'FROM usuarios WHERE email = ? AND rol IN (?, ?, ?)',
+      [email.trim().toLowerCase(), 'cliente', 'administrador', 'empleado'],
     );
     if (rows.isEmpty ||
         !_asBool(rows.first.fields['activo']) ||
@@ -217,6 +226,7 @@ Future<void> _login(HttpRequest request) async {
       'userId': userId,
       'email': user['email'],
       'name': user['nombre'],
+      'course': user['curso'],
       'role': user['rol'],
       'token': createSessionToken(userId, _tokenSecret()),
     });
@@ -225,7 +235,70 @@ Future<void> _login(HttpRequest request) async {
   }
 }
 
-Future<StaffUser> _requireStaff(HttpRequest request) async {
+Future<void> _registerCustomer(HttpRequest request) async {
+  final body = await _readJsonBody(request);
+  final name = body['name'];
+  final course = body['course'];
+  final email = body['email'];
+  final password = body['password'];
+  if (name is! String ||
+      name.trim().isEmpty ||
+      name.trim().length > 100 ||
+      course is! String ||
+      course.trim().isEmpty ||
+      course.trim().length > 50 ||
+      email is! String ||
+      !RegExp(_emailPattern).hasMatch(email.trim()) ||
+      email.trim().length > 254 ||
+      password is! String ||
+      password.length < 8 ||
+      password.length > 128) {
+    throw const RequestException(
+      HttpStatus.badRequest,
+      'Ingresa nombre, curso, correo válido y una contraseña de 8 a 128 caracteres.',
+    );
+  }
+
+  final normalizedEmail = email.trim().toLowerCase();
+  final normalizedName = name.trim();
+  final normalizedCourse = course.trim();
+  final connection = await _connectToDatabase();
+  try {
+    final result = await connection.query(
+      'INSERT INTO usuarios '
+      '(email, nombre, curso, rol, activo, contrasena_hash) '
+      'VALUES (?, ?, ?, ?, TRUE, ?)',
+      [
+        normalizedEmail,
+        normalizedName,
+        normalizedCourse,
+        'cliente',
+        hashPassword(password),
+      ],
+    );
+    final userId = _asInt(result.insertId);
+    await _respond(request.response, HttpStatus.created, {
+      'userId': userId,
+      'email': normalizedEmail,
+      'name': normalizedName,
+      'course': normalizedCourse,
+      'role': 'cliente',
+      'token': createSessionToken(userId, _tokenSecret()),
+    });
+  } on MySqlException catch (error) {
+    if (error.errorNumber == 1062) {
+      throw const RequestException(
+        HttpStatus.conflict,
+        'Ya existe una cuenta con ese correo.',
+      );
+    }
+    rethrow;
+  } finally {
+    await connection.close();
+  }
+}
+
+Future<AuthenticatedUser> _requireStaff(HttpRequest request) async {
   final user = await _authenticate(request);
   if (user.role != 'empleado' && user.role != 'administrador') {
     throw const RequestException(HttpStatus.forbidden, 'Acceso denegado.');
@@ -233,7 +306,7 @@ Future<StaffUser> _requireStaff(HttpRequest request) async {
   return user;
 }
 
-Future<StaffUser> _requireAdmin(HttpRequest request) async {
+Future<AuthenticatedUser> _requireAdmin(HttpRequest request) async {
   final user = await _authenticate(request);
   if (user.role != 'administrador') {
     throw const RequestException(
@@ -244,7 +317,18 @@ Future<StaffUser> _requireAdmin(HttpRequest request) async {
   return user;
 }
 
-Future<StaffUser> _authenticate(HttpRequest request) async {
+Future<AuthenticatedUser> _requireCustomer(HttpRequest request) async {
+  final user = await _authenticate(request);
+  if (user.role != 'cliente') {
+    throw const RequestException(
+      HttpStatus.forbidden,
+      'Esta acción requiere una cuenta de alumno.',
+    );
+  }
+  return user;
+}
+
+Future<AuthenticatedUser> _authenticate(HttpRequest request) async {
   final authorization = request.headers.value(HttpHeaders.authorizationHeader);
   if (authorization == null || !authorization.startsWith('Bearer ')) {
     throw const RequestException(HttpStatus.unauthorized, 'Inicia sesión.');
@@ -264,7 +348,7 @@ Future<StaffUser> _authenticate(HttpRequest request) async {
   final connection = await _connectToDatabase();
   try {
     final rows = await connection.query(
-      'SELECT id, email, nombre, rol FROM usuarios '
+      'SELECT id, email, nombre, curso, rol FROM usuarios '
       'WHERE id = ? AND activo = TRUE',
       [userId],
     );
@@ -275,10 +359,11 @@ Future<StaffUser> _authenticate(HttpRequest request) async {
       );
     }
     final user = rows.first.fields;
-    return StaffUser(
+    return AuthenticatedUser(
       id: _asInt(user['id']),
       email: '${user['email']}',
       name: '${user['nombre']}',
+      course: user['curso'] as String?,
       role: '${user['rol']}',
     );
   } finally {
@@ -317,23 +402,31 @@ Future<void> _getProducts(HttpResponse response) async {
 Future<void> _createOrder(HttpRequest request) async {
   final body = await _readJsonBody(request);
   final paymentMethod = body['paymentMethod'];
-  final customerName = body['customerName'];
-  final course = body['course'];
   final rawItems = body['items'];
   if (paymentMethod is! String ||
       !const {'En el buffet', 'Billetera virtual'}.contains(paymentMethod) ||
-      customerName is! String ||
-      customerName.trim().isEmpty ||
-      customerName.trim().length > 100 ||
-      course is! String ||
-      course.trim().isEmpty ||
-      course.trim().length > 50 ||
       rawItems is! List ||
       rawItems.isEmpty ||
       rawItems.length > 40) {
     throw const RequestException(
       HttpStatus.badRequest,
       'Revisa los datos del pedido.',
+    );
+  }
+
+  final authorization = request.headers.value(HttpHeaders.authorizationHeader);
+  final user = authorization == null ? null : await _requireCustomer(request);
+  final customerName = user?.name ?? body['customerName'];
+  final course = user?.course ?? body['course'];
+  if (customerName is! String ||
+      customerName.trim().isEmpty ||
+      customerName.trim().length > 100 ||
+      course is! String ||
+      course.trim().isEmpty ||
+      course.trim().length > 50) {
+    throw const RequestException(
+      HttpStatus.badRequest,
+      'Revisa el nombre y el curso del pedido.',
     );
   }
 
@@ -367,7 +460,7 @@ Future<void> _createOrder(HttpRequest request) async {
   final connection = await _connectToDatabase();
   var transactionStarted = false;
   try {
-    final guestId = await _getGuestUserId(connection);
+    final userId = user?.id ?? await _getGuestUserId(connection);
     final productPrices = <int, double>{};
     for (final productId in quantities.keys) {
       final rows = await connection.query(
@@ -391,7 +484,7 @@ Future<void> _createOrder(HttpRequest request) async {
       '(usuario_id, cliente_nombre, cliente_curso, estado, metodo_pago, '
       'token_seguimiento_hash) VALUES (?, ?, ?, ?, ?, ?)',
       [
-        guestId,
+        userId,
         customerName.trim(),
         course.trim(),
         'pendiente',
@@ -423,6 +516,59 @@ Future<void> _createOrder(HttpRequest request) async {
   } catch (_) {
     if (transactionStarted) await connection.query('ROLLBACK');
     rethrow;
+  } finally {
+    await connection.close();
+  }
+}
+
+Future<void> _getCustomerOrders(HttpResponse response, int customerId) async {
+  final connection = await _connectToDatabase();
+  try {
+    final rows = await connection.query(
+      'SELECT o.id, o.codigo_retiro, o.cliente_nombre, o.cliente_curso, '
+      'o.metodo_pago, o.estado, o.motivo_cancelacion, pp.producto_id, '
+      'pp.cantidad, pp.precio_unitario, p.nombre AS producto_nombre, '
+      'p.descripcion AS producto_descripcion, p.emoji AS producto_emoji, '
+      'p.color AS producto_color, c.nombre AS categoria '
+      'FROM pedidos o '
+      'LEFT JOIN productos_pedido pp ON pp.pedido_id = o.id '
+      'LEFT JOIN productos p ON p.id = pp.producto_id '
+      'LEFT JOIN categorias c ON c.id = p.categoria_id '
+      'WHERE o.usuario_id = ? '
+      'ORDER BY o.creado_en DESC, o.id DESC',
+      [customerId],
+    );
+
+    final orders = <int, Map<String, dynamic>>{};
+    for (final row in rows) {
+      final id = _asInt(row.fields['id']);
+      final order = orders.putIfAbsent(
+        id,
+        () => {
+          'id': id,
+          'pickupCode': row.fields['codigo_retiro'] ?? id.toString(),
+          'customerName': row.fields['cliente_nombre'],
+          'course': row.fields['cliente_curso'],
+          'paymentMethod': row.fields['metodo_pago'],
+          'status': row.fields['estado'],
+          'cancellationReason': row.fields['motivo_cancelacion'],
+          'items': <Map<String, dynamic>>[],
+        },
+      );
+      if (row.fields['producto_id'] == null) continue;
+
+      (order['items'] as List<Map<String, dynamic>>).add({
+        'productId': _asInt(row.fields['producto_id']),
+        'name': row.fields['producto_nombre'],
+        'description': row.fields['producto_descripcion'],
+        'category': row.fields['categoria'],
+        'price': _asDouble(row.fields['precio_unitario']),
+        'emoji': row.fields['producto_emoji'],
+        'color': row.fields['producto_color'],
+        'quantity': _asInt(row.fields['cantidad']),
+      });
+    }
+    await _respond(response, HttpStatus.ok, orders.values.toList());
   } finally {
     await connection.close();
   }
@@ -793,17 +939,19 @@ Future<void> _respond(
   await response.close();
 }
 
-class StaffUser {
-  const StaffUser({
+class AuthenticatedUser {
+  const AuthenticatedUser({
     required this.id,
     required this.email,
     required this.name,
+    required this.course,
     required this.role,
   });
 
   final int id;
   final String email;
   final String name;
+  final String? course;
   final String role;
 }
 

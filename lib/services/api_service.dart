@@ -16,6 +16,7 @@ class ApiService {
 
   final http.Client _client = http.Client();
   String? _authToken;
+  AuthSession? _session;
 
   Future<AuthSession> login(String email, String password) async {
     final response = await _client
@@ -32,11 +33,44 @@ class ApiService {
 
     final session = AuthSession.fromJson(data);
     _authToken = session.token;
+    _session = session;
     return session;
   }
 
+  Future<AuthSession> registerCustomer({
+    required String name,
+    required String course,
+    required String email,
+    required String password,
+  }) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/auth/register'),
+          headers: const {'content-type': 'application/json'},
+          body: jsonEncode({
+            'name': name,
+            'course': course,
+            'email': email,
+            'password': password,
+          }),
+        )
+        .timeout(const Duration(seconds: 10));
+    final data = _decodeResponse(response);
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('La API devolvió una cuenta inválida.');
+    }
+
+    final session = AuthSession.fromJson(data);
+    _authToken = session.token;
+    _session = session;
+    return session;
+  }
+
+  bool get isCustomerAuthenticated => _session?.role == 'cliente';
+
   void logout() {
     _authToken = null;
+    _session = null;
   }
 
   Future<List<Product>> getProducts() async {
@@ -62,7 +96,10 @@ class ApiService {
     final response = await _client
         .post(
           Uri.parse('${ApiConfig.baseUrl}/orders'),
-          headers: const {'content-type': 'application/json'},
+          headers: {
+            'content-type': 'application/json',
+            if (_authToken != null) 'authorization': 'Bearer $_authToken',
+          },
           body: jsonEncode({
             'paymentMethod': paymentMethod,
             'customerName': customerName,
@@ -90,11 +127,34 @@ class ApiService {
     );
   }
 
+  Future<List<Order>> getCustomerOrders() async {
+    final response = await _client
+        .get(
+          Uri.parse('${ApiConfig.baseUrl}/customer/orders'),
+          headers: _authorizedHeaders(),
+        )
+        .timeout(const Duration(seconds: 10));
+    final data = _decodeResponse(response);
+    if (data is! List) {
+      throw const FormatException('La API devolvió un historial inválido.');
+    }
+
+    return data
+        .map((item) => Order.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<Order> refreshOrderStatus(Order order) async {
+    final trackingToken = order.trackingToken;
+    if (trackingToken == null) {
+      throw const ApiException(
+        'Inicia sesión para actualizar el estado de este pedido.',
+      );
+    }
     final response = await _client
         .get(
           Uri.parse('${ApiConfig.baseUrl}/orders/${order.id}/status'),
-          headers: {'x-order-token': order.trackingToken},
+          headers: {'x-order-token': trackingToken},
         )
         .timeout(const Duration(seconds: 10));
     final data = _decodeResponse(response);

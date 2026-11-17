@@ -6,7 +6,7 @@ class Order {
     required Map<Product, int> items,
     required this.paymentMethod,
     required this.pickupCode,
-    required this.trackingToken,
+    this.trackingToken,
     required this.customerName,
     required this.course,
     this.status = 'pendiente',
@@ -17,11 +17,44 @@ class Order {
   final Map<Product, int> items;
   final String paymentMethod;
   final String pickupCode;
-  final String trackingToken;
+  final String? trackingToken;
   final String customerName;
   final String course;
   final String status;
   final String? cancellationReason;
+
+  factory Order.fromJson(Map<String, dynamic> json) {
+    final rawItems = json['items'];
+    if (rawItems is! List) {
+      throw const FormatException('El pedido no contiene productos válidos.');
+    }
+
+    final items = <Product, int>{};
+    for (final rawItem in rawItems) {
+      if (rawItem is! Map<String, dynamic>) {
+        throw const FormatException('El pedido contiene un producto inválido.');
+      }
+      final product = Product(
+        id: rawItem['productId'] as int,
+        name: rawItem['name'] as String,
+        description: rawItem['description'] as String? ?? '',
+        category: rawItem['category'] as String? ?? '',
+        emoji: rawItem['emoji'] as String? ?? '',
+      );
+      items[product] = rawItem['quantity'] as int;
+    }
+
+    return Order(
+      id: json['id'] as int,
+      items: items,
+      paymentMethod: json['paymentMethod'] as String,
+      pickupCode: json['pickupCode'] as String,
+      customerName: json['customerName'] as String,
+      course: json['course'] as String,
+      status: json['status'] as String,
+      cancellationReason: json['cancellationReason'] as String?,
+    );
+  }
 
   bool get isPending => status == 'pendiente' || status == 'en_preparacion';
 

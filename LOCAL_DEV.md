@@ -7,6 +7,9 @@ por `10.0.2.2`, pero un teléfono físico u otro equipo de la red no.
 1. Inicia el servicio MySQL.
 2. Si la base todavía no está creada, ejecuta `database/ddl.sql` y
    `database/seed_local.sql`.
+   Si ya existe, ejecuta una sola vez
+   `database/migrate_customer_accounts.sql` para habilitar las cuentas de
+   alumnos.
 3. En MySQL Workbench, conectado con una cuenta administradora, ejecuta
    `database/setup_local_passwordless.sql`. El script crea o actualiza el
    usuario local `al_toque_api` sin contraseña y le asigna los permisos
