@@ -206,7 +206,7 @@ Future<void> _login(HttpRequest request) async {
   final connection = await _connectToDatabase();
   try {
     final rows = await connection.query(
-      'SELECT id, email, nombre, curso, rol, contrasena_hash, activo '
+      'SELECT id, email, nombre, rol, contrasena_hash, activo '
       'FROM usuarios WHERE email = ? AND rol IN (?, ?, ?)',
       [email.trim().toLowerCase(), 'cliente', 'administrador', 'empleado'],
     );
@@ -225,7 +225,6 @@ Future<void> _login(HttpRequest request) async {
       'userId': userId,
       'email': user['email'],
       'name': user['nombre'],
-      'course': user['curso'],
       'role': user['rol'],
       'token': createSessionToken(userId, _tokenSecret()),
     });
@@ -237,15 +236,11 @@ Future<void> _login(HttpRequest request) async {
 Future<void> _registerCustomer(HttpRequest request) async {
   final body = await _readJsonBody(request);
   final name = body['name'];
-  final course = body['course'];
   final email = body['email'];
   final password = body['password'];
   if (name is! String ||
       name.trim().isEmpty ||
       name.trim().length > 100 ||
-      course is! String ||
-      course.trim().isEmpty ||
-      course.trim().length > 50 ||
       email is! String ||
       !RegExp(_emailPattern).hasMatch(email.trim()) ||
       email.trim().length > 254 ||
@@ -254,33 +249,25 @@ Future<void> _registerCustomer(HttpRequest request) async {
       password.length > 128) {
     throw const RequestException(
       HttpStatus.badRequest,
-      'Ingresa nombre, curso, correo válido y una contraseña de 8 a 128 caracteres.',
+      'Ingresa nombre, correo válido y una contraseña de 8 a 128 caracteres.',
     );
   }
 
   final normalizedEmail = email.trim().toLowerCase();
   final normalizedName = name.trim();
-  final normalizedCourse = course.trim();
   final connection = await _connectToDatabase();
   try {
     final result = await connection.query(
       'INSERT INTO usuarios '
-      '(email, nombre, curso, rol, activo, contrasena_hash) '
-      'VALUES (?, ?, ?, ?, TRUE, ?)',
-      [
-        normalizedEmail,
-        normalizedName,
-        normalizedCourse,
-        'cliente',
-        hashPassword(password),
-      ],
+      '(email, nombre, rol, activo, contrasena_hash) '
+      'VALUES (?, ?, ?, TRUE, ?)',
+      [normalizedEmail, normalizedName, 'cliente', hashPassword(password)],
     );
     final userId = _asInt(result.insertId);
     await _respond(request.response, HttpStatus.created, {
       'userId': userId,
       'email': normalizedEmail,
       'name': normalizedName,
-      'course': normalizedCourse,
       'role': 'cliente',
       'token': createSessionToken(userId, _tokenSecret()),
     });
@@ -347,7 +334,7 @@ Future<AuthenticatedUser> _authenticate(HttpRequest request) async {
   final connection = await _connectToDatabase();
   try {
     final rows = await connection.query(
-      'SELECT id, email, nombre, curso, rol FROM usuarios '
+      'SELECT id, email, nombre, rol FROM usuarios '
       'WHERE id = ? AND activo = TRUE',
       [userId],
     );
@@ -362,7 +349,6 @@ Future<AuthenticatedUser> _authenticate(HttpRequest request) async {
       id: _asInt(user['id']),
       email: '${user['email']}',
       name: '${user['nombre']}',
-      course: user['curso'] as String?,
       role: '${user['rol']}',
     );
   } finally {
@@ -415,15 +401,10 @@ Future<void> _createOrder(HttpRequest request) async {
 
   final user = await _requireCustomer(request);
   final customerName = user.name;
-  final course = user.course;
-  if (customerName.trim().isEmpty ||
-      customerName.trim().length > 100 ||
-      course == null ||
-      course.trim().isEmpty ||
-      course.trim().length > 50) {
+  if (customerName.trim().isEmpty || customerName.trim().length > 100) {
     throw const RequestException(
       HttpStatus.conflict,
-      'La cuenta no tiene nombre y curso válidos para realizar un pedido.',
+      'La cuenta no tiene un nombre válido para realizar un pedido.',
     );
   }
 
@@ -482,7 +463,7 @@ Future<void> _createOrder(HttpRequest request) async {
       [
         user.id,
         customerName.trim(),
-        course.trim(),
+        '',
         'pendiente',
         paymentMethod,
         hashTrackingToken(trackingToken),
@@ -927,14 +908,12 @@ class AuthenticatedUser {
     required this.id,
     required this.email,
     required this.name,
-    required this.course,
     required this.role,
   });
 
   final int id;
   final String email;
   final String name;
-  final String? course;
   final String role;
 }
 

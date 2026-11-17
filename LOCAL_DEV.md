@@ -9,9 +9,8 @@ se aceptan pedidos como invitado.
 1. Inicia el servicio MySQL.
 2. Si la base todavía no está creada, ejecuta `database/ddl.sql` y
    `database/seed_local.sql`.
-   Si ya existe, ejecuta una sola vez
-   `database/migrate_customer_accounts.sql` para habilitar las cuentas de
-   alumnos.
+   Si ya existía y todavía no tiene los campos de alumnos y pedidos, ejecuta
+   una sola vez `database/migrate_admin_modules.sql`.
 3. En MySQL Workbench, conectado con una cuenta administradora, ejecuta
    `database/setup_local_passwordless.sql`. El script crea o actualiza el
    usuario local `al_toque_api` sin contraseña y le asigna los permisos

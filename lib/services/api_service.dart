@@ -39,7 +39,6 @@ class ApiService {
 
   Future<AuthSession> registerCustomer({
     required String name,
-    required String course,
     required String email,
     required String password,
   }) async {
@@ -49,7 +48,6 @@ class ApiService {
           headers: const {'content-type': 'application/json'},
           body: jsonEncode({
             'name': name,
-            'course': course,
             'email': email,
             'password': password,
           }),
@@ -91,7 +89,6 @@ class ApiService {
     Map<Product, int> items,
     String paymentMethod,
     String customerName,
-    String course,
   ) async {
     final response = await _client
         .post(
@@ -102,8 +99,6 @@ class ApiService {
           },
           body: jsonEncode({
             'paymentMethod': paymentMethod,
-            'customerName': customerName,
-            'course': course,
             'items': [
               for (final entry in items.entries)
                 {'productId': entry.key.id, 'quantity': entry.value},
@@ -123,7 +118,7 @@ class ApiService {
       pickupCode: data['pickupCode'] as String,
       trackingToken: data['trackingToken'] as String,
       customerName: customerName,
-      course: course,
+      course: '',
     );
   }
 

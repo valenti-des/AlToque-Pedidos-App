@@ -170,7 +170,9 @@ class _TableroBuffetScreenState extends State<TableroBuffetScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    '${selectedOrder.customerName} · ${selectedOrder.course}',
+                    selectedOrder.course.isEmpty
+                        ? selectedOrder.customerName
+                        : '${selectedOrder.customerName} · ${selectedOrder.course}',
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const SizedBox(height: 12),
@@ -412,7 +414,9 @@ class _OrderCard extends StatelessWidget {
                 ],
               ),
               Text(
-                '${order.customerName} · ${order.course}',
+                order.course.isEmpty
+                    ? order.customerName
+                    : '${order.customerName} · ${order.course}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

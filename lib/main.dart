@@ -41,13 +41,12 @@ class MyApp extends StatelessWidget {
   }
 }
 
-void _showCatalog(BuildContext context, String customerName, String course) {
+void _showCatalog(BuildContext context, String customerName) {
   final navigator = Navigator.of(context);
   navigator.pushReplacement(
     MaterialPageRoute<void>(
       builder: (context) => CatalogPage(
         customerName: customerName,
-        course: course,
         onSignOut: () => _showLogin(navigator),
       ),
     ),
@@ -79,13 +78,11 @@ void _showLogin(NavigatorState navigator) {
 class CatalogPage extends StatefulWidget {
   const CatalogPage({
     required this.customerName,
-    required this.course,
     required this.onSignOut,
     super.key,
   });
 
   final String customerName;
-  final String course;
   final VoidCallback onSignOut;
 
   @override
@@ -175,7 +172,6 @@ class _CatalogPageState extends State<CatalogPage> {
         builder: (context) => PaymentPage(
           items,
           customerName: widget.customerName,
-          course: widget.course,
           onSelectPayment: (paymentMethod) =>
               _createOrder(items, paymentMethod),
         ),
@@ -191,7 +187,6 @@ class _CatalogPageState extends State<CatalogPage> {
       items,
       paymentMethod,
       widget.customerName,
-      widget.course,
     );
     if (!mounted) return order;
     setState(() {

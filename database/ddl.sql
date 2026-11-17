@@ -9,7 +9,6 @@ CREATE TABLE IF NOT EXISTS usuarios (
   nombre_usuario VARCHAR(50) NULL,
   email VARCHAR(254) NULL,
   nombre VARCHAR(100) NOT NULL DEFAULT '',
-  curso VARCHAR(50) NULL,
   rol VARCHAR(20) NOT NULL DEFAULT 'cliente',
   activo BOOLEAN NOT NULL DEFAULT TRUE,
   contrasena_hash VARCHAR(255) NOT NULL,

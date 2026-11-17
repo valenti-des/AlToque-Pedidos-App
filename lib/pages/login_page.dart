@@ -10,7 +10,7 @@ class LoginPage extends StatefulWidget {
     super.key,
   });
 
-  final void Function(BuildContext, String, String) onCustomerContinue;
+  final void Function(BuildContext, String) onCustomerContinue;
   final void Function(BuildContext, AuthSession) onStaffLogin;
 
   @override
@@ -20,7 +20,6 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   String _name = '';
-  String _course = '';
   String _email = '';
   String _password = '';
   String? _errorMessage;
@@ -45,7 +44,7 @@ class _LoginPageState extends State<LoginPage> {
         );
       }
       if (!mounted) return;
-      widget.onCustomerContinue(context, session.name, session.course ?? '');
+      widget.onCustomerContinue(context, session.name);
     } catch (error) {
       if (!mounted) return;
       setState(() => _errorMessage = error.toString());
@@ -64,12 +63,11 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final session = await ApiService.instance.registerCustomer(
         name: _name.trim(),
-        course: _course.trim(),
         email: _email.trim(),
         password: _password,
       );
       if (!mounted) return;
-      widget.onCustomerContinue(context, session.name, session.course ?? '');
+      widget.onCustomerContinue(context, session.name);
     } catch (error) {
       if (!mounted) return;
       setState(() => _errorMessage = error.toString());
@@ -117,22 +115,6 @@ class _LoginPageState extends State<LoginPage> {
         ? 'El nombre es demasiado largo'
         : null,
     onSaved: (value) => _name = value ?? '',
-  );
-
-  Widget _courseField() => TextFormField(
-    textCapitalization: TextCapitalization.words,
-    textInputAction: TextInputAction.next,
-    decoration: const InputDecoration(
-      labelText: 'Curso',
-      prefixIcon: Icon(Icons.class_outlined),
-      border: OutlineInputBorder(),
-    ),
-    validator: (value) => value == null || value.trim().isEmpty
-        ? 'Ingresa tu curso'
-        : value.trim().length > 50
-        ? 'El curso es demasiado largo'
-        : null,
-    onSaved: (value) => _course = value ?? '',
   );
 
   Widget _emailField() => TextFormField(
@@ -285,8 +267,6 @@ class _LoginPageState extends State<LoginPage> {
                   ] else ...[
                     if (_customerMode == 'register') ...[
                       _nameField(),
-                      const SizedBox(height: 14),
-                      _courseField(),
                       const SizedBox(height: 14),
                     ],
                     _emailField(),

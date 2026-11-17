@@ -8,14 +8,12 @@ class PaymentPage extends StatefulWidget {
   const PaymentPage(
     this.items, {
     required this.customerName,
-    required this.course,
     required this.onSelectPayment,
     super.key,
   });
 
   final Map<Product, int> items;
   final String customerName;
-  final String course;
   final Future<Order> Function(String) onSelectPayment;
 
   @override
@@ -68,7 +66,7 @@ class _PaymentPageState extends State<PaymentPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Pedido para ${widget.customerName} · ${widget.course}',
+              'Pedido para ${widget.customerName}',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             Text(
