@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -65,6 +66,28 @@ class ApiService {
   }
 
   bool get isCustomerAuthenticated => _session?.role == 'cliente';
+
+  Future<WebSocket> connectStaffOrderUpdates() async {
+    final token = _authToken;
+    final role = _session?.role;
+    if (token == null || (role != 'empleado' && role != 'administrador')) {
+      throw const ApiException(
+        'Inicia sesión con una cuenta del personal para ver las comandas.',
+      );
+    }
+
+    final baseUri = Uri.parse(ApiConfig.baseUrl);
+    final socketUri = baseUri.replace(
+      scheme: baseUri.scheme == 'https' ? 'wss' : 'ws',
+      path: '/ws/orders',
+      query: null,
+      fragment: null,
+    );
+    return WebSocket.connect(
+      socketUri.toString(),
+      headers: {'authorization': 'Bearer $token'},
+    ).timeout(const Duration(seconds: 10));
+  }
 
   void logout() {
     _authToken = null;
@@ -183,6 +206,16 @@ class ApiService {
     final response = await _client
         .patch(
           Uri.parse('${ApiConfig.baseUrl}/admin/orders/$orderId/ready'),
+          headers: _authorizedHeaders(),
+        )
+        .timeout(const Duration(seconds: 10));
+    _decodeResponse(response);
+  }
+
+  Future<void> markOrderDelivered(int orderId) async {
+    final response = await _client
+        .patch(
+          Uri.parse('${ApiConfig.baseUrl}/admin/orders/$orderId/delivered'),
           headers: _authorizedHeaders(),
         )
         .timeout(const Duration(seconds: 10));

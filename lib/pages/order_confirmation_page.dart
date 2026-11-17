@@ -130,6 +130,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
 
 String _statusLabel(String status) => switch (status) {
   'listo' => 'Listo para retirar',
+  'entregado' => 'Entregado',
   'cancelado' => 'Pedido cancelado',
   'en_preparacion' => 'En preparación',
   _ => 'Pedido pendiente',

@@ -1,3 +1,5 @@
+import 'usuario.dart';
+
 class AuthSession {
   const AuthSession({
     required this.userId,
@@ -21,5 +23,20 @@ class AuthSession {
   final String role;
   final String token;
 
-  bool get isAdmin => role == 'administrador';
+  RolUsuario get rol => RolUsuario.fromJson(role);
+  Usuario get usuario => Usuario(
+    id: userId,
+    nombre: name,
+    email: email,
+    rol: rol,
+  );
+  bool get isAdmin => rol == RolUsuario.administrador;
+
+  Map<String, dynamic> toJson() => {
+    'userId': userId,
+    'email': email,
+    'name': name,
+    'role': role,
+    'token': token,
+  };
 }

@@ -20,4 +20,10 @@ se aceptan pedidos como invitado.
    en Run and Debug y presiona F5. VS Code inicia la API y, cuando comprueba
    la conexión con MySQL, abre Flutter.
 
+Los empleados y administradores inician sesión desde **Personal** y usan el
+mismo tablero de comandas. El tablero recibe cambios mediante
+`ws://127.0.0.1:8080/ws/orders` (en Android, `10.0.2.2`), autenticado con la
+sesión del personal; el acceso a gestión de empleados sigue limitado al
+administrador.
+
 VS Code detiene la API automáticamente al finalizar la sesión de depuración.

@@ -6,6 +6,7 @@ import 'package:mysql1/mysql1.dart';
 import 'package:al_toque_local_api/security.dart';
 
 const _emailPattern = r'^[^@\s]+@[^@\s]+\.[^@\s]+$';
+final Map<WebSocket, int> _staffOrderSockets = {};
 
 Future<void> main() async {
   final port = int.tryParse(Platform.environment['API_PORT'] ?? '8080');
@@ -38,6 +39,11 @@ Future<void> _handleRequest(HttpRequest request) async {
         await connection.close();
       }
       await _respond(request.response, HttpStatus.ok, {'status': 'ok'});
+      return;
+    }
+
+    if (request.method == 'GET' && request.uri.path == '/ws/orders') {
+      await _upgradeStaffOrderSocket(request);
       return;
     }
 
@@ -81,6 +87,17 @@ Future<void> _handleRequest(HttpRequest request) async {
     if (request.method == 'PATCH' && readyMatch != null) {
       await _requireStaff(request);
       await _setOrderReady(request.response, int.parse(readyMatch.group(1)!));
+      return;
+    }
+
+    final deliveredMatch = RegExp(r'^/admin/orders/(\d+)/delivered$')
+        .firstMatch(request.uri.path);
+    if (request.method == 'PATCH' && deliveredMatch != null) {
+      await _requireStaff(request);
+      await _markOrderDelivered(
+        request.response,
+        int.parse(deliveredMatch.group(1)!),
+      );
       return;
     }
 
@@ -150,6 +167,58 @@ Future<void> _handleRequest(HttpRequest request) async {
       stderr.writeln(
         'El cliente cerró la conexión antes de recibir respuesta.',
       );
+    }
+  }
+}
+
+Future<void> _upgradeStaffOrderSocket(HttpRequest request) async {
+  if (!WebSocketTransformer.isUpgradeRequest(request)) {
+    throw const RequestException(
+      HttpStatus.badRequest,
+      'Se requiere una conexión WebSocket.',
+    );
+  }
+  final user = await _requireStaff(request);
+  final socket = await WebSocketTransformer.upgrade(request);
+  _staffOrderSockets[socket] = user.id;
+  socket.add(jsonEncode({'type': 'connected'}));
+  socket.listen(
+    (_) {},
+    onDone: () => _staffOrderSockets.remove(socket),
+    onError: (Object error) {
+      stderr.writeln('Error en WebSocket de comandas: $error');
+      _staffOrderSockets.remove(socket);
+    },
+  );
+}
+
+void _broadcastOrdersChanged() {
+  final message = jsonEncode({'type': 'orders_updated'});
+  for (final socket in _staffOrderSockets.keys.toList()) {
+    if (socket.readyState != WebSocket.open) {
+      _staffOrderSockets.remove(socket);
+      continue;
+    }
+    try {
+      socket.add(message);
+    } on StateError catch (error) {
+      stderr.writeln('No se pudo notificar un WebSocket de comandas: $error');
+      _staffOrderSockets.remove(socket);
+    }
+  }
+}
+
+Future<void> _disconnectStaffOrderSockets(int userId) async {
+  final sockets = _staffOrderSockets.entries
+      .where((entry) => entry.value == userId)
+      .map((entry) => entry.key)
+      .toList();
+  for (final socket in sockets) {
+    _staffOrderSockets.remove(socket);
+    try {
+      await socket.close();
+    } on WebSocketException catch (error) {
+      stderr.writeln('No se pudo cerrar el WebSocket del empleado: $error');
     }
   }
 }
@@ -485,6 +554,7 @@ Future<void> _createOrder(HttpRequest request) async {
     }
     await connection.query('COMMIT');
     transactionStarted = false;
+    _broadcastOrdersChanged();
     await _respond(request.response, HttpStatus.created, {
       'id': orderId,
       'pickupCode': pickupCode,
@@ -590,14 +660,19 @@ Future<void> _getAdminOrders(HttpResponse response) async {
   final connection = await _connectToDatabase();
   try {
     final rows = await connection.query(
-      'SELECT o.id, o.codigo_retiro, o.cliente_nombre, o.cliente_curso, '
+      "SELECT o.id, o.usuario_id, COALESCE(u.email, '') AS cliente_email, "
+      'o.creado_en, '
+      'o.codigo_retiro, o.cliente_nombre, o.cliente_curso, '
       'o.metodo_pago, o.estado, o.motivo_cancelacion, pp.producto_id, '
       'pp.cantidad, pp.precio_unitario, pp.estado AS estado_item, '
-      'pp.motivo_rechazo, p.nombre AS producto_nombre '
+      'pp.motivo_rechazo, p.nombre AS producto_nombre, '
+      'c.nombre AS producto_categoria '
       'FROM (SELECT * FROM pedidos '
       'ORDER BY creado_en DESC, id DESC LIMIT 100) o '
       'LEFT JOIN productos_pedido pp ON pp.pedido_id = o.id '
       'LEFT JOIN productos p ON p.id = pp.producto_id '
+      'LEFT JOIN categorias c ON c.id = p.categoria_id '
+      'JOIN usuarios u ON u.id = o.usuario_id '
       'ORDER BY o.creado_en DESC, o.id DESC',
     );
 
@@ -609,11 +684,21 @@ Future<void> _getAdminOrders(HttpResponse response) async {
         () => {
           'id': id,
           'pickupCode': row.fields['codigo_retiro'] ?? id.toString(),
+          'customer': {
+            'id': _asInt(row.fields['usuario_id']),
+            'name': row.fields['cliente_nombre'],
+            'email': row.fields['cliente_email'],
+            'role': 'cliente',
+            'course': row.fields['cliente_curso'],
+          },
           'customerName': row.fields['cliente_nombre'],
           'course': row.fields['cliente_curso'],
           'paymentMethod': row.fields['metodo_pago'],
           'status': row.fields['estado'],
           'cancellationReason': row.fields['motivo_cancelacion'],
+          'createdAt': (row.fields['creado_en'] as DateTime)
+              .toUtc()
+              .toIso8601String(),
           'total': 0.0,
           'items': <Map<String, dynamic>>[],
         },
@@ -621,8 +706,13 @@ Future<void> _getAdminOrders(HttpResponse response) async {
       if (row.fields['producto_id'] == null) continue;
 
       final item = {
-        'productId': _asInt(row.fields['producto_id']),
-        'name': row.fields['producto_nombre'],
+        'product': {
+          'id': _asInt(row.fields['producto_id']),
+          'name': row.fields['producto_nombre'],
+          'category': row.fields['producto_categoria'],
+          'price': _asDouble(row.fields['precio_unitario']),
+          'imageUrl': null,
+        },
         'quantity': _asInt(row.fields['cantidad']),
         'unitPrice': _asDouble(row.fields['precio_unitario']),
         'status': row.fields['estado_item'],
@@ -657,6 +747,7 @@ Future<void> _setOrderReady(HttpResponse response, int orderId) async {
         'El pedido ya no está pendiente o no tiene productos disponibles.',
       );
     }
+    _broadcastOrdersChanged();
     await _respond(response, HttpStatus.ok, {'status': 'listo'});
   } finally {
     await connection.close();
@@ -688,6 +779,7 @@ Future<void> _cancelOrder(HttpRequest request, int orderId) async {
         'El pedido ya no se puede cancelar.',
       );
     }
+    _broadcastOrdersChanged();
     await _respond(request.response, HttpStatus.ok, {'status': 'cancelado'});
   } finally {
     await connection.close();
@@ -746,6 +838,7 @@ Future<void> _rejectOrderItem(
     }
     await connection.query('COMMIT');
     transactionStarted = false;
+    _broadcastOrdersChanged();
     await _respond(response, HttpStatus.ok, {
       'status': allItemsRejected ? 'cancelado' : 'pendiente',
       'allItemsRejected': allItemsRejected,
@@ -753,6 +846,27 @@ Future<void> _rejectOrderItem(
   } catch (_) {
     if (transactionStarted) await connection.query('ROLLBACK');
     rethrow;
+  } finally {
+    await connection.close();
+  }
+}
+
+Future<void> _markOrderDelivered(HttpResponse response, int orderId) async {
+  final connection = await _connectToDatabase();
+  try {
+    final result = await connection.query(
+      "UPDATE pedidos SET estado = 'entregado' "
+      "WHERE id = ? AND estado = 'listo'",
+      [orderId],
+    );
+    if (result.affectedRows == 0) {
+      throw const RequestException(
+        HttpStatus.conflict,
+        'Solo se pueden entregar pedidos que estén listos.',
+      );
+    }
+    _broadcastOrdersChanged();
+    await _respond(response, HttpStatus.ok, {'status': 'entregado'});
   } finally {
     await connection.close();
   }
@@ -850,6 +964,7 @@ Future<void> _deactivateEmployee(
         'No se encontró el empleado activo.',
       );
     }
+    await _disconnectStaffOrderSockets(employeeId);
     await _respond(response, HttpStatus.ok, {'deleted': true});
   } finally {
     await connection.close();

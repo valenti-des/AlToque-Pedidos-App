@@ -5,8 +5,8 @@ import 'data/products.dart';
 import 'models/auth_session.dart';
 import 'models/product.dart';
 import 'models/order.dart';
-import 'pages/admin_home_screen.dart';
 import 'pages/cart_page.dart';
+import 'pages/gestion_empleados_screen.dart';
 import 'pages/login_page.dart';
 import 'pages/order_history_page.dart';
 import 'pages/payment_page.dart';
@@ -56,10 +56,22 @@ void _showCatalog(BuildContext context, String customerName) {
 void _showStaffArea(BuildContext context, AuthSession session) {
   final navigator = Navigator.of(context);
   void onSignOut() => _showLogin(navigator);
-  final page = session.isAdmin
-      ? AdminHomeScreen(onSignOut: onSignOut)
-      : TableroBuffetScreen(onSignOut: onSignOut);
-  navigator.pushReplacement(MaterialPageRoute<void>(builder: (_) => page));
+  navigator.pushReplacement(
+    MaterialPageRoute<void>(
+      builder: (_) => TableroBuffetScreen(
+        isAdmin: session.isAdmin,
+        onSignOut: onSignOut,
+        onManageEmployees: session.isAdmin
+            ? () => navigator.push(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      GestionEmpleadosScreen(onSignOut: onSignOut),
+                ),
+              )
+            : null,
+      ),
+    ),
+  );
 }
 
 void _showLogin(NavigatorState navigator) {

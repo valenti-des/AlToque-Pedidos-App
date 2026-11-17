@@ -181,6 +181,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
 
 String _statusLabel(String status) => switch (status) {
   'listo' => 'Listo para retirar',
+  'entregado' => 'Entregado',
   'cancelado' => 'Cancelado',
   'en_preparacion' => 'En preparación',
   _ => 'Pendiente',

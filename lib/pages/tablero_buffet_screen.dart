@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 
@@ -25,28 +27,95 @@ class _TableroBuffetScreenState extends State<TableroBuffetScreen> {
   List<Pedido> _orders = [];
   bool _isLoading = true;
   bool _isRefreshing = false;
+  bool _refreshRequested = false;
   String? _error;
   String? _refreshError;
-  Timer? _refreshTimer;
+  String? _socketError;
+  WebSocket? _orderSocket;
+  StreamSubscription<dynamic>? _orderSubscription;
+  Timer? _reconnectTimer;
+  bool _isConnectingSocket = false;
 
   @override
   void initState() {
     super.initState();
     _loadOrders();
-    _refreshTimer = Timer.periodic(
-      const Duration(seconds: 8),
-      (_) => _loadOrders(showLoading: false),
-    );
+    _connectToOrderUpdates();
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
+    _reconnectTimer?.cancel();
+    unawaited(_orderSubscription?.cancel());
+    final socket = _orderSocket;
+    if (socket != null) unawaited(socket.close());
     super.dispose();
   }
 
+  Future<void> _connectToOrderUpdates() async {
+    if (!mounted || _isConnectingSocket) return;
+    _isConnectingSocket = true;
+    try {
+      final socket = await ApiService.instance.connectStaffOrderUpdates();
+      if (!mounted) {
+        await socket.close();
+        return;
+      }
+      _orderSocket = socket;
+      setState(() => _socketError = null);
+      _orderSubscription = socket.listen(
+        _handleOrderEvent,
+        onError: (Object error) => _scheduleReconnect(error),
+        onDone: _scheduleReconnect,
+        cancelOnError: true,
+      );
+      await _loadOrders(showLoading: false);
+    } catch (error) {
+      _scheduleReconnect(error);
+    } finally {
+      _isConnectingSocket = false;
+    }
+  }
+
+  void _handleOrderEvent(dynamic message) {
+    try {
+      final event = jsonDecode(message as String);
+      if (event is Map<String, dynamic> &&
+          event['type'] == 'orders_updated') {
+        _loadOrders(showLoading: false);
+      }
+    } on FormatException catch (error) {
+      _scheduleReconnect(error);
+    } on TypeError catch (error) {
+      _scheduleReconnect(error);
+    }
+  }
+
+  void _scheduleReconnect([Object? error]) {
+    final subscription = _orderSubscription;
+    final socket = _orderSocket;
+    _orderSocket = null;
+    _orderSubscription = null;
+    if (subscription != null) unawaited(subscription.cancel());
+    if (socket != null) unawaited(socket.close());
+    if (!mounted) return;
+    if (error != null) {
+      setState(() {
+        _socketError = error.toString();
+      });
+    }
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer(
+      const Duration(seconds: 3),
+      _connectToOrderUpdates,
+    );
+  }
+
   Future<void> _loadOrders({bool showLoading = true}) async {
-    if (_isRefreshing) return;
+    if (_isRefreshing) {
+      _refreshRequested = true;
+      return;
+    }
     _isRefreshing = true;
     if (showLoading && mounted) {
       setState(() {
@@ -76,6 +145,10 @@ class _TableroBuffetScreenState extends State<TableroBuffetScreen> {
       });
     } finally {
       _isRefreshing = false;
+      if (_refreshRequested && mounted) {
+        _refreshRequested = false;
+        unawaited(_loadOrders(showLoading: false));
+      }
     }
   }
 
@@ -108,13 +181,19 @@ class _TableroBuffetScreenState extends State<TableroBuffetScreen> {
     await _performAction(() => ApiService.instance.markOrderReady(order.id));
   }
 
+  Future<void> _markDelivered(Pedido order) async {
+    await _performAction(
+      () => ApiService.instance.markOrderDelivered(order.id),
+    );
+  }
+
   Future<void> _showCancelDialog(Pedido order) async {
     final formKey = GlobalKey<FormState>();
     final reasonController = TextEditingController();
     final reason = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Rechazar pedido ${order.pickupCode}'),
+        title: Text('Rechazar pedido ${order.formattedPickupCode}'),
         content: Form(
           key: formKey,
           child: TextFormField(
@@ -161,7 +240,9 @@ class _TableroBuffetScreenState extends State<TableroBuffetScreen> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text('Pedido ${selectedOrder.pickupCode}'),
+          title: Text(
+            '${selectedOrder.displayId} · ${selectedOrder.formattedPickupCode}',
+          ),
           content: SizedBox(
             width: 520,
             child: SingleChildScrollView(
@@ -254,7 +335,7 @@ class _TableroBuffetScreenState extends State<TableroBuffetScreen> {
                                     );
                                   }
                                 },
-                                child: const Text('No disponible'),
+                                child: const Text('Falta stock'),
                               ),
                       ),
                     ),
@@ -305,14 +386,18 @@ class _TableroBuffetScreenState extends State<TableroBuffetScreen> {
       ),
       body: Column(
         children: [
-          if (_refreshError != null)
+          if (_refreshError != null || _socketError != null)
             MaterialBanner(
               content: Text(
-                'No se pudieron actualizar los pedidos: $_refreshError',
+                _socketError != null
+                    ? 'La conexión en tiempo real se interrumpió: $_socketError'
+                    : 'No se pudieron actualizar los pedidos: $_refreshError',
               ),
               actions: [
                 TextButton(
-                  onPressed: () => _loadOrders(),
+                  onPressed: _socketError != null
+                      ? _connectToOrderUpdates
+                      : () => _loadOrders(),
                   child: const Text('Reintentar'),
                 ),
               ],
@@ -342,7 +427,11 @@ class _TableroBuffetScreenState extends State<TableroBuffetScreen> {
                               onDoubleTap: () =>
                                   _showOrderDetails(_orders[index]),
                               onMarkReady: () => _markReady(_orders[index]),
+                              onMarkDelivered: () =>
+                                  _markDelivered(_orders[index]),
                               onCancel: () => _showCancelDialog(_orders[index]),
+                              onDetails: () =>
+                                  _showOrderDetails(_orders[index]),
                             ),
                           );
                         }
@@ -353,7 +442,7 @@ class _TableroBuffetScreenState extends State<TableroBuffetScreen> {
                                 crossAxisCount: columns,
                                 crossAxisSpacing: 16,
                                 mainAxisSpacing: 16,
-                                mainAxisExtent: 330,
+                                mainAxisExtent: 400,
                               ),
                           itemCount: _orders.length,
                           itemBuilder: (context, index) => _OrderCard(
@@ -361,7 +450,11 @@ class _TableroBuffetScreenState extends State<TableroBuffetScreen> {
                             onDoubleTap: () =>
                                 _showOrderDetails(_orders[index]),
                             onMarkReady: () => _markReady(_orders[index]),
+                            onMarkDelivered: () =>
+                                _markDelivered(_orders[index]),
                             onCancel: () => _showCancelDialog(_orders[index]),
+                            onDetails: () =>
+                                _showOrderDetails(_orders[index]),
                           ),
                         );
                       },
@@ -379,13 +472,17 @@ class _OrderCard extends StatelessWidget {
     required this.order,
     required this.onDoubleTap,
     required this.onMarkReady,
+    required this.onMarkDelivered,
     required this.onCancel,
+    required this.onDetails,
   });
 
   final Pedido order;
   final VoidCallback onDoubleTap;
   final VoidCallback onMarkReady;
+  final VoidCallback onMarkDelivered;
   final VoidCallback onCancel;
+  final VoidCallback onDetails;
 
   @override
   Widget build(BuildContext context) {
@@ -405,7 +502,9 @@ class _OrderCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      'Pedido ${order.pickupCode}',
+                      order.displayId,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium
                           ?.copyWith(fontWeight: FontWeight.bold),
                     ),
@@ -413,6 +512,7 @@ class _OrderCard extends StatelessWidget {
                   Chip(label: Text(_statusLabel(order.status))),
                 ],
               ),
+              Text(order.formattedPickupCode),
               Text(
                 order.course.isEmpty
                     ? order.customerName
@@ -421,7 +521,7 @@ class _OrderCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 8),
-              Text('Pago: ${order.paymentMethod}'),
+              Text('Pago: ${order.modalidadPago.label}'),
               const SizedBox(height: 8),
               Text(
                 activeItems.isEmpty
@@ -458,11 +558,15 @@ class _OrderCard extends StatelessWidget {
                     ),
                   ],
                 ),
+              if (order.status == EstadoPedido.listo)
+                FilledButton(
+                  onPressed: onMarkDelivered,
+                  child: const Text('Marcar como entregado'),
+                ),
               const SizedBox(height: 4),
-              Text(
-                'Doble toque para ver el detalle',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall,
+              TextButton(
+                onPressed: onDetails,
+                child: const Text('Ver más · doble toque para el detalle'),
               ),
             ],
           ),
@@ -495,12 +599,7 @@ class _ErrorState extends StatelessWidget {
   );
 }
 
-String _statusLabel(String status) => switch (status) {
-  'listo' => 'Listo',
-  'cancelado' => 'Cancelado',
-  'en_preparacion' => 'En preparación',
-  _ => 'Pendiente',
-};
+String _statusLabel(EstadoPedido status) => status.label;
 
 String _formatPrice(double amount) {
   final value = amount.round().toString();
