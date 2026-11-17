@@ -165,7 +165,7 @@ Future<MySqlConnection> _connectToDatabase() {
       host: Platform.environment['DB_HOST'] ?? '127.0.0.1',
       port: port,
       user: Platform.environment['DB_USER'] ?? 'al_toque_api',
-      password: password,
+      password: password.isEmpty ? null : password,
       db: Platform.environment['DB_NAME'] ?? 'al_toque',
     ),
   );
