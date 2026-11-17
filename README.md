@@ -185,15 +185,8 @@ Para iniciar la API local y Flutter juntos desde VS Code, consulta
 - **Emulador Android en la misma PC:** desde la carpeta del proyecto ejecuta
   `flutter run`. La dirección predeterminada `http://10.0.2.2:8080` apunta a la
   PC anfitriona.
-- **Teléfono en el mismo Wi-Fi:** ejecuta `ipconfig`, busca la IPv4 Wi-Fi de la
-  PC y ejecuta:
-
-  ```powershell
-  flutter run --dart-define=API_BASE_URL=http://192.168.1.25:8080
-  ```
-
-  Sustituye la IP de ejemplo por la real. Si es necesario, permite TCP `8080`
-  en Windows Firewall para redes privadas.
+- **Teléfono físico:** no disponible en el modo local actual. La API solo
+  acepta conexiones desde esta PC y su emulador Android.
 - El cliente ingresa nombre y curso. El personal inicia sesión con su correo y
   contraseña. En la gestión de empleados, usa doble toque en “Agregar empleado”;
   en el tablero, doble toque sobre una comanda abre su detalle.

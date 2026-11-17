@@ -22,8 +22,8 @@ Future<void> main() async {
     await connection.close();
   }
 
-  final server = await HttpServer.bind(InternetAddress.anyIPv4, port);
-  stdout.writeln('API local disponible en http://0.0.0.0:$port');
+  final server = await HttpServer.bind(InternetAddress.loopbackIPv4, port);
+  stdout.writeln('API local disponible en http://127.0.0.1:$port');
   await for (final request in server) {
     _handleRequest(request);
   }

@@ -1,7 +1,8 @@
 # Inicio local sin contraseña de MySQL
 
 Esta configuracion es solo para desarrollo en una computadora de confianza.
-No expongas MySQL ni la API a una red compartida o a Internet.
+La API solo escucha en loopback: el emulador Android de esta PC puede acceder
+por `10.0.2.2`, pero un teléfono físico u otro equipo de la red no.
 
 1. Inicia el servicio MySQL.
 2. Si la base todavía no está creada, ejecuta `database/ddl.sql` y
