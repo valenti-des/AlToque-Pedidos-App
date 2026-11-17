@@ -1,0 +1,32 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Al Toque: iniciar API local",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\backend\\tool\\run_local_api.ps1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}\\backend"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "al-toque-api",
+        "pattern": {
+          "regexp": "^(API local disponible en http://0\\.0\\.0\\.0:8080)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "endsPattern": "^API local disponible en http://0\\.0\\.0\\.0:8080$"
+        }
+      }
+    }
+  ]
+}

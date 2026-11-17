@@ -179,6 +179,9 @@ devuelve `[]`, ejecuta `database/seed_local.sql`.
 
 ## Usar la app
 
+Para iniciar la API local y Flutter juntos desde VS Code, consulta
+[Inicio local sin contraseña de MySQL](LOCAL_DEV.md).
+
 - **Emulador Android en la misma PC:** desde la carpeta del proyecto ejecuta
   `flutter run`. La dirección predeterminada `http://10.0.2.2:8080` apunta a la
   PC anfitriona.

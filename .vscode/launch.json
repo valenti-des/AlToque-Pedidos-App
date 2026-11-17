@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Al Toque (local)",
+      "request": "launch",
+      "type": "dart",
+      "program": "${workspaceFolder}\\lib\\main.dart",
+      "preLaunchTask": "Al Toque: iniciar API local"
+    }
+  ]
+}
