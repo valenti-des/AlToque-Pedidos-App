@@ -25,16 +25,9 @@ class _LoginPageState extends State<LoginPage> {
   String _password = '';
   String? _errorMessage;
   bool _isStaffMode = false;
-  String _customerMode = 'guest';
+  String _customerMode = 'login';
   bool _hidePassword = true;
   bool _isSigningIn = false;
-
-  void _continue() {
-    if (!_formKey.currentState!.validate()) return;
-    _formKey.currentState!.save();
-    ApiService.instance.logout();
-    widget.onCustomerContinue(context, _name.trim(), _course.trim());
-  }
 
   Future<void> _signInCustomer() async {
     if (!_formKey.currentState!.validate()) return;
@@ -196,14 +189,12 @@ class _LoginPageState extends State<LoginPage> {
     final VoidCallback submit = _isStaffMode
         ? _signInStaff
         : switch (_customerMode) {
-            'guest' => _continue,
             'login' => _signInCustomer,
             _ => _registerCustomer,
           };
     final buttonLabel = _isStaffMode
         ? 'Ingresar al panel'
         : switch (_customerMode) {
-            'guest' => 'Ver menú',
             'login' => 'Ingresar',
             _ => 'Crear cuenta',
           };
@@ -271,7 +262,6 @@ class _LoginPageState extends State<LoginPage> {
                   if (!_isStaffMode) ...[
                     SegmentedButton<String>(
                       segments: const [
-                        ButtonSegment(value: 'guest', label: Text('Invitado')),
                         ButtonSegment(value: 'login', label: Text('Ingresar')),
                         ButtonSegment(
                           value: 'register',
@@ -292,10 +282,6 @@ class _LoginPageState extends State<LoginPage> {
                     _emailField(),
                     const SizedBox(height: 14),
                     _passwordField(isRegistration: false),
-                  ] else if (_customerMode == 'guest') ...[
-                    _nameField(),
-                    const SizedBox(height: 14),
-                    _courseField(),
                   ] else ...[
                     if (_customerMode == 'register') ...[
                       _nameField(),

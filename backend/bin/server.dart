@@ -5,7 +5,6 @@ import 'package:mysql1/mysql1.dart';
 
 import 'package:al_toque_local_api/security.dart';
 
-const guestUsername = 'pedido_local';
 const _emailPattern = r'^[^@\s]+@[^@\s]+\.[^@\s]+$';
 
 Future<void> main() async {
@@ -414,19 +413,17 @@ Future<void> _createOrder(HttpRequest request) async {
     );
   }
 
-  final authorization = request.headers.value(HttpHeaders.authorizationHeader);
-  final user = authorization == null ? null : await _requireCustomer(request);
-  final customerName = user?.name ?? body['customerName'];
-  final course = user?.course ?? body['course'];
-  if (customerName is! String ||
-      customerName.trim().isEmpty ||
+  final user = await _requireCustomer(request);
+  final customerName = user.name;
+  final course = user.course;
+  if (customerName.trim().isEmpty ||
       customerName.trim().length > 100 ||
-      course is! String ||
+      course == null ||
       course.trim().isEmpty ||
       course.trim().length > 50) {
     throw const RequestException(
-      HttpStatus.badRequest,
-      'Revisa el nombre y el curso del pedido.',
+      HttpStatus.conflict,
+      'La cuenta no tiene nombre y curso válidos para realizar un pedido.',
     );
   }
 
@@ -460,7 +457,6 @@ Future<void> _createOrder(HttpRequest request) async {
   final connection = await _connectToDatabase();
   var transactionStarted = false;
   try {
-    final userId = user?.id ?? await _getGuestUserId(connection);
     final productPrices = <int, double>{};
     for (final productId in quantities.keys) {
       final rows = await connection.query(
@@ -484,7 +480,7 @@ Future<void> _createOrder(HttpRequest request) async {
       '(usuario_id, cliente_nombre, cliente_curso, estado, metodo_pago, '
       'token_seguimiento_hash) VALUES (?, ?, ?, ?, ?, ?)',
       [
-        userId,
+        user.id,
         customerName.trim(),
         course.trim(),
         'pendiente',
@@ -907,19 +903,6 @@ Future<Map<String, dynamic>> _readJsonBody(HttpRequest request) async {
     HttpStatus.badRequest,
     'El cuerpo de la solicitud debe ser un objeto JSON.',
   );
-}
-
-Future<int> _getGuestUserId(MySqlConnection connection) async {
-  final rows = await connection.query(
-    'SELECT id FROM usuarios WHERE nombre_usuario = ? AND rol = ?',
-    [guestUsername, 'cliente'],
-  );
-  if (rows.isEmpty) {
-    throw StateError(
-      'Falta el usuario local "$guestUsername". Ejecuta database/seed_local.sql.',
-    );
-  }
-  return _asInt(rows.first.fields['id']);
 }
 
 int _asInt(Object? value) => int.parse('$value');

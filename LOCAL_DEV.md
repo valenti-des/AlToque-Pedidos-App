@@ -3,6 +3,8 @@
 Esta configuracion es solo para desarrollo en una computadora de confianza.
 La API solo escucha en loopback: el emulador Android de esta PC puede acceder
 por `10.0.2.2`, pero un teléfono físico u otro equipo de la red no.
+Para hacer pedidos, los alumnos deben crear una cuenta o iniciar sesión; no
+se aceptan pedidos como invitado.
 
 1. Inicia el servicio MySQL.
 2. Si la base todavía no está creada, ejecuta `database/ddl.sql` y
