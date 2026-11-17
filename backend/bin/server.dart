@@ -15,6 +15,13 @@ Future<void> main() async {
   }
   _tokenSecret();
 
+  final connection = await _connectToDatabase();
+  try {
+    await connection.query('SELECT 1');
+  } finally {
+    await connection.close();
+  }
+
   final server = await HttpServer.bind(InternetAddress.anyIPv4, port);
   stdout.writeln('API local disponible en http://0.0.0.0:$port');
   await for (final request in server) {
@@ -144,9 +151,13 @@ Future<MySqlConnection> _connectToDatabase() {
   if (port == null || port < 1 || port > 65535) {
     throw const FormatException('DB_PORT debe ser un puerto válido.');
   }
-  final password = Platform.environment['DB_PASSWORD'];
-  if (password == null || password.isEmpty) {
-    throw StateError('Configura DB_PASSWORD antes de iniciar la API.');
+  final password = Platform.environment['DB_PASSWORD'] ?? '';
+  if (password.isEmpty &&
+      Platform.environment['ALLOW_EMPTY_DB_PASSWORD'] != 'true') {
+    throw StateError(
+      'Configura DB_PASSWORD o habilita ALLOW_EMPTY_DB_PASSWORD '
+      'solo para desarrollo local.',
+    );
   }
 
   return MySqlConnection.connect(
