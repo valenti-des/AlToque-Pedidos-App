@@ -15,5 +15,4 @@ No expongas MySQL ni la API a una red compartida o a Internet.
    en Run and Debug y presiona F5. VS Code inicia la API y, cuando comprueba
    la conexión con MySQL, abre Flutter.
 
-La tarea de API queda activa mientras trabajas. Para detenerla, usa
-**Terminal: Terminate Task** y selecciona **Al Toque: iniciar API local**.
+VS Code detiene la API automáticamente al finalizar la sesión de depuración.

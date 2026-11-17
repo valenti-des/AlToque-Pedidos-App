@@ -6,7 +6,8 @@
       "request": "launch",
       "type": "dart",
       "program": "${workspaceFolder}\\lib\\main.dart",
-      "preLaunchTask": "Al Toque: iniciar API local"
+      "preLaunchTask": "Al Toque: iniciar API local",
+      "postDebugTask": "Al Toque: detener API local"
     }
   ]
 }
