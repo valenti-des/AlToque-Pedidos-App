@@ -16,7 +16,22 @@ se aceptan pedidos como invitado.
    usuario local `al_toque_api` sin contraseña y le asigna los permisos
    necesarios. Si MySQL rechaza contraseñas vacias por su politica, no
    desactives esa politica globalmente; usa una cuenta local con contraseña.
-4. Abre la carpeta del proyecto en VS Code, selecciona **Al Toque (local)**
+4. Para crear las cuentas de prueba, abre PowerShell en la carpeta del
+   proyecto y ejecuta:
+
+   ```powershell
+   $env:ALLOW_EMPTY_DB_PASSWORD = 'true'
+   $env:ALLOW_DEMO_ACCOUNTS = 'true'
+   Set-Location backend
+   dart run bin/create_demo_accounts.dart
+   Remove-Item Env:ALLOW_DEMO_ACCOUNTS
+   ```
+
+   El comando muestra un correo fijo para cada rol y contraseñas aleatorias.
+   No guarda las contraseñas en archivos; al ejecutarlo otra vez, las
+   contraseñas de esas cuentas se regeneran. Si configuraste MySQL con clave,
+   define también `DB_PASSWORD` antes de ejecutarlo.
+5. Abre la carpeta del proyecto en VS Code, selecciona **Al Toque (local)**
    en Run and Debug y presiona F5. VS Code inicia la API y, cuando comprueba
    la conexión con MySQL, abre Flutter.
 
