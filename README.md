@@ -166,3 +166,4 @@ producción.
 
 La pantalla de inicio de sesión sigue siendo una validación de demostración
 local (`buffet` / `1234`); no es autenticación real del servidor.
+
