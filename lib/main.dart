@@ -10,24 +10,87 @@ import 'pages/order_history_page.dart';
 import 'pages/payment_page.dart';
 import 'services/api_service.dart';
 import 'widgets/product_card.dart';
+import 'widgets/product_detail_sheet.dart';
 
 void main() {
   runApp(const MyApp());
 }
+
+const brandBlue = Color(0xFF1E6FFF);
+const pageBackground = Color(0xFFF8FAFC);
+const inkColor = Color(0xFF0F172A);
+const mutedColor = Color(0xFF64748B);
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // ignore: use_full_hex_values_for_flutter_colors
-    const brandColor = Color(0x0F76F6);
-
     return MaterialApp(
       title: 'Al Toque Pedidos',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: brandColor),
-        scaffoldBackgroundColor: const Color(0xFFFFFBF7),
+        colorScheme: const ColorScheme.light(
+          primary: brandBlue,
+          onPrimary: Colors.white,
+          secondary: Color(0xFF22C55E),
+          error: Color(0xFFEF4444),
+          surface: Colors.white,
+          onSurface: inkColor,
+        ),
+        scaffoldBackgroundColor: pageBackground,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: brandBlue,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: false,
+        ),
+        cardTheme: CardThemeData(
+          color: Colors.white,
+          elevation: 1,
+          shadowColor: Colors.black.withValues(alpha: 0.04),
+          margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          hintStyle: const TextStyle(color: mutedColor),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: brandBlue, width: 1.5),
+          ),
+        ),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          backgroundColor: Colors.white,
+          selectedItemColor: brandBlue,
+          unselectedItemColor: mutedColor,
+          type: BottomNavigationBarType.fixed,
+          elevation: 8,
+        ),
+        textTheme: const TextTheme(
+          headlineSmall: TextStyle(
+            color: inkColor,
+            fontWeight: FontWeight.w700,
+          ),
+          titleLarge: TextStyle(color: inkColor, fontWeight: FontWeight.w700),
+          titleMedium: TextStyle(color: inkColor, fontWeight: FontWeight.w600),
+          bodyMedium: TextStyle(color: mutedColor),
+          bodySmall: TextStyle(color: mutedColor),
+        ),
         useMaterial3: true,
       ),
       home: LoginPage(_showCatalog),
@@ -61,8 +124,10 @@ class CatalogPage extends StatefulWidget {
 }
 
 class _CatalogPageState extends State<CatalogPage> {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
   String _selectedCategory = 'Todos';
   String _searchQuery = '';
+  int _selectedTab = 0;
   List<Product> _products = [];
   bool _isLoadingProducts = true;
   String? _productsError;
@@ -163,9 +228,12 @@ class _CatalogPageState extends State<CatalogPage> {
     try {
       final orders = await ApiService.instance.getOrders();
       if (!mounted) return;
-      Navigator.of(context).push(
+      await Navigator.of(context).push(
         MaterialPageRoute<void>(builder: (context) => OrderHistoryPage(orders)),
       );
+      if (mounted && _selectedTab == 1) {
+        setState(() => _selectedTab = 0);
+      }
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -179,6 +247,7 @@ class _CatalogPageState extends State<CatalogPage> {
     final visibleProducts = _filteredProducts;
 
     return Scaffold(
+      key: _scaffoldKey,
       drawer: Drawer(
         child: SafeArea(
           child: Column(
@@ -219,6 +288,7 @@ class _CatalogPageState extends State<CatalogPage> {
         ),
       ),
       appBar: AppBar(
+        toolbarHeight: 68,
         title: Row(
           children: [
             Builder(
@@ -250,7 +320,10 @@ class _CatalogPageState extends State<CatalogPage> {
               ),
             ),
             const SizedBox(width: 10),
-            const Text('Al Toque'),
+            const Text(
+              'AlToque',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
           ],
         ),
         actions: [
@@ -274,30 +347,63 @@ class _CatalogPageState extends State<CatalogPage> {
             ),
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(108),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 46,
+                  child: TextField(
+                    onChanged: (value) => setState(() {
+                      _searchQuery = value.trim();
+                    }),
+                    decoration: const InputDecoration(
+                      hintText: 'Buscar productos...',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 38,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: categories.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final category = categories[index];
+                      final selected = _selectedCategory == category;
+                      return ChoiceChip(
+                        label: Text(category),
+                        selected: selected,
+                        showCheckmark: false,
+                        backgroundColor: Colors.white.withValues(alpha: 0.14),
+                        selectedColor: Colors.white,
+                        labelStyle: TextStyle(
+                          color: selected ? brandBlue : Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        side: BorderSide.none,
+                        onSelected: (_) => setState(() {
+                          _selectedCategory = category;
+                        }),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
       body: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value.trim();
-                });
-              },
-              decoration: InputDecoration(
-                hintText: 'Buscar productos...',
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-            const SizedBox(height: 22),
             Text(
               '¿Qué se te antoja?',
               style: Theme.of(context).textTheme.headlineSmall
@@ -306,31 +412,10 @@ class _CatalogPageState extends State<CatalogPage> {
             const SizedBox(height: 4),
             Text(
               'Elegí algo rico para disfrutar',
-              style: Theme.of(context).textTheme.bodyMedium
-                  ?.copyWith(color: Colors.black54),
+                style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 18),
-            SizedBox(
-              height: 42,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: categories.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final category = categories[index];
-                  return ChoiceChip(
-                    label: Text(category),
-                    selected: _selectedCategory == category,
-                    onSelected: (selected) {
-                      setState(() {
-                        _selectedCategory = category;
-                      });
-                    },
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -342,7 +427,7 @@ class _CatalogPageState extends State<CatalogPage> {
                 Text(
                   '${visibleProducts.length} productos',
                   style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: Colors.black54),
+                      ?.copyWith(color: mutedColor),
                 ),
               ],
             ),
@@ -383,12 +468,60 @@ class _CatalogPageState extends State<CatalogPage> {
                           ),
                       itemBuilder: (context, index) {
                         final product = visibleProducts[index];
-                        return ProductCard(product, () => _addToCart(product));
+                        return ProductCard(
+                          product,
+                          () => _addToCart(product),
+                          onTap: () => _showProductDetails(product),
+                        );
                       },
                     ),
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedTab,
+        onTap: (index) {
+          if (index == 0) {
+            setState(() => _selectedTab = 0);
+          } else if (index == 1) {
+            setState(() => _selectedTab = 1);
+            _openOrderHistory();
+          } else {
+            _scaffoldKey.currentState?.openDrawer();
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: 'Inicio',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.receipt_long_outlined),
+            label: 'Mis pedidos',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: 'Cuenta',
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showProductDetails(Product product) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ProductDetailSheet(
+        product: product,
+        onAdd: (quantity) {
+          for (var index = 0; index < quantity; index++) {
+            _addToCart(product);
+          }
+        },
       ),
     );
   }
