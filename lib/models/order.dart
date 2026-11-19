@@ -1,7 +1,12 @@
 import 'product.dart';
 
 class Order {
-  Order(Map<Product, int> items, this.paymentMethod, this.pickupCode)
+  Order(
+    Map<Product, int> items,
+    this.paymentMethod,
+    this.pickupCode, {
+    this.status = 'pendiente',
+  })
     : items = Map<Product, int>.unmodifiable(items);
 
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -19,10 +24,12 @@ class Order {
       items,
       json['paymentMethod'] as String,
       json['pickupCode'] as String,
+      status: json['status'] as String? ?? 'pendiente',
     );
   }
 
   final Map<Product, int> items;
   final String paymentMethod;
   final String pickupCode;
+  final String status;
 }

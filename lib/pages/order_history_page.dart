@@ -36,7 +36,7 @@ class OrderHistoryPage extends StatelessWidget {
                     title: Text('Pedido ${order.pickupCode}'),
                     subtitle: Text(
                       '$itemCount productos · ${order.paymentMethod}'
-                      ' · En preparación',
+                      ' · ${_statusLabel(order.status)}',
                     ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
@@ -52,7 +52,7 @@ class OrderHistoryPage extends StatelessWidget {
                                 Text('${entry.value} × ${entry.key.name}'),
                               const SizedBox(height: 12),
                               Text('Pago: ${order.paymentMethod}'),
-                              const Text('Estado: En preparación'),
+                              Text('Estado: ${_statusLabel(order.status)}'),
                             ],
                           ),
                           actions: [
@@ -69,5 +69,20 @@ class OrderHistoryPage extends StatelessWidget {
               },
             ),
     );
+  }
+}
+
+String _statusLabel(String status) {
+  switch (status.toLowerCase()) {
+    case 'listo':
+    case 'para entregar':
+      return 'Listo para retirar';
+    case 'entregado':
+      return 'Entregado';
+    case 'cancelado':
+    case 'rechazado':
+      return 'Cancelado';
+    default:
+      return 'En preparación';
   }
 }
