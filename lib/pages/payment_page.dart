@@ -16,6 +16,7 @@ class PaymentPage extends StatefulWidget {
 
 class _PaymentPageState extends State<PaymentPage> {
   bool _isSubmitting = false;
+  String _paymentMethod = 'En el buffet';
 
   Future<void> _selectPayment(String method) async {
     if (_isSubmitting) return;
@@ -41,6 +42,11 @@ class _PaymentPageState extends State<PaymentPage> {
 
   @override
   Widget build(BuildContext context) {
+    final total = widget.items.entries.fold<int>(
+      0,
+      (sum, entry) =>
+          sum + _priceAmount(entry.key.price) * entry.value,
+    );
     return Scaffold(
       appBar: AppBar(title: const Text('Elegir forma de pago')),
       body: Padding(
@@ -54,9 +60,9 @@ class _PaymentPageState extends State<PaymentPage> {
                   ?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'La selección solo registra tu preferencia. '
-              'El pago se realiza en el buffet.',
+            Text(
+              'Elige cómo vas a abonar tu pedido.',
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 8),
             Text(
@@ -65,32 +71,48 @@ class _PaymentPageState extends State<PaymentPage> {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: _isSubmitting
-                  ? null
-                  : () => _selectPayment('En el buffet'),
-              icon: const Icon(Icons.payments_outlined),
-              label: const Text('Pagar en físico'),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+            Card(
+              color: Colors.white,
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Column(
+                children: [
+                  RadioListTile<String>(
+                    value: 'En el buffet',
+                    groupValue: _paymentMethod,
+                    onChanged: _isSubmitting
+                        ? null
+                        : (value) => setState(() => _paymentMethod = value!),
+                    title: const Text('Efectivo al retirar'),
+                    secondary: const Icon(Icons.payments_outlined),
+                    activeColor: Theme.of(context).colorScheme.primary,
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  RadioListTile<String>(
+                    value: 'Billetera virtual',
+                    groupValue: _paymentMethod,
+                    onChanged: _isSubmitting
+                        ? null
+                        : (value) => setState(() => _paymentMethod = value!),
+                    title: const Text('Transferencia'),
+                    secondary: const Icon(Icons.account_balance_outlined),
+                    activeColor: Theme.of(context).colorScheme.primary,
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 14),
-            OutlinedButton.icon(
-              onPressed: _isSubmitting
-                  ? null
-                  : () => _selectPayment('Billetera virtual'),
-              icon: const Icon(Icons.account_balance_wallet_outlined),
-              label: const Text('Billetera virtual'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 18),
+            const Spacer(),
+            FilledButton(
+              onPressed: _isSubmitting ? null : () => _selectPayment(_paymentMethod),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 17),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
+              child: Text('Confirmar pedido · ${_formatAmount(total)}'),
             ),
             if (_isSubmitting) ...[
               const SizedBox(height: 12),
@@ -101,4 +123,15 @@ class _PaymentPageState extends State<PaymentPage> {
       ),
     );
   }
+}
+
+int _priceAmount(String price) =>
+    int.tryParse(price.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+
+String _formatAmount(int amount) {
+  final formatted = amount.toString().replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (_) => '.',
+  );
+  return '\$ $formatted';
 }
