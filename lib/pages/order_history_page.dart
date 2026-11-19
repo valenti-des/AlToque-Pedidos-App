@@ -121,6 +121,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                         (total, quantity) => total + quantity,
                       );
                       final status = _statusLabel(order.status);
+                      final date = order.createdAt;
 
                       return Card(
                         color: Colors.white,
@@ -133,6 +134,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                           ),
                           title: Text('Pedido ${order.pickupCode}'),
                           subtitle: Text(
+                            '${date == null ? '' : '${date.day}/${date.month}/${date.year} · '}'
                             '$itemCount productos · ${order.paymentMethod} · $status',
                           ),
                           trailing: const Icon(Icons.chevron_right),

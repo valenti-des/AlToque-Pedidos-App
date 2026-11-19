@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../models/pedido.dart';
 import '../services/api_service.dart';
+import 'historial_buffet_screen.dart';
 
 class TableroBuffetScreen extends StatefulWidget {
   const TableroBuffetScreen({
@@ -80,8 +81,7 @@ class _TableroBuffetScreenState extends State<TableroBuffetScreen> {
   void _handleOrderEvent(dynamic message) {
     try {
       final event = jsonDecode(message as String);
-      if (event is Map<String, dynamic> &&
-          event['type'] == 'orders_updated') {
+      if (event is Map<String, dynamic> && event['type'] == 'orders_updated') {
         _loadOrders(showLoading: false);
       }
     } on FormatException catch (error) {
@@ -105,10 +105,7 @@ class _TableroBuffetScreenState extends State<TableroBuffetScreen> {
       });
     }
     _reconnectTimer?.cancel();
-    _reconnectTimer = Timer(
-      const Duration(seconds: 3),
-      _connectToOrderUpdates,
-    );
+    _reconnectTimer = Timer(const Duration(seconds: 3), _connectToOrderUpdates);
   }
 
   Future<void> _loadOrders({bool showLoading = true}) async {
@@ -212,6 +209,15 @@ class _TableroBuffetScreenState extends State<TableroBuffetScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Historial',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const HistorialBuffetScreen(),
+              ),
+            ),
+            icon: const Icon(Icons.history),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Volver'),
@@ -453,8 +459,7 @@ class _TableroBuffetScreenState extends State<TableroBuffetScreen> {
                             onMarkDelivered: () =>
                                 _markDelivered(_orders[index]),
                             onCancel: () => _showCancelDialog(_orders[index]),
-                            onDetails: () =>
-                                _showOrderDetails(_orders[index]),
+                            onDetails: () => _showOrderDetails(_orders[index]),
                           ),
                         );
                       },

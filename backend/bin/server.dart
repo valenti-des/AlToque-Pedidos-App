@@ -59,6 +59,12 @@ Future<void> _handleRequest(HttpRequest request) async {
       await _getProducts(request.response);
       return;
     }
+    if (request.method == 'GET' &&
+        request.uri.path == '/api/preordenes/historial') {
+      final user = await _requireCustomer(request);
+      await _getCustomerOrders(request.response, user.id);
+      return;
+    }
     if (request.method == 'GET' && request.uri.path == '/customer/orders') {
       final user = await _requireCustomer(request);
       await _getCustomerOrders(request.response, user.id);
@@ -81,6 +87,18 @@ Future<void> _handleRequest(HttpRequest request) async {
       await _getAdminOrders(request.response);
       return;
     }
+    if (request.uri.path == '/api/buffet/historial' &&
+        request.method == 'GET') {
+      await _requireStaff(request);
+      await _getFilteredHistory(request);
+      return;
+    }
+    if (request.uri.path == '/api/admin/estadisticas-empleados' &&
+        request.method == 'GET') {
+      await _requireAdmin(request);
+      await _getEmployeeStats(request.response);
+      return;
+    }
 
     final readyMatch = RegExp(r'^/admin/orders/(\d+)/ready$')
         .firstMatch(request.uri.path);
@@ -93,10 +111,11 @@ Future<void> _handleRequest(HttpRequest request) async {
     final deliveredMatch = RegExp(r'^/admin/orders/(\d+)/delivered$')
         .firstMatch(request.uri.path);
     if (request.method == 'PATCH' && deliveredMatch != null) {
-      await _requireStaff(request);
+      final user = await _requireStaff(request);
       await _markOrderDelivered(
         request.response,
         int.parse(deliveredMatch.group(1)!),
+        user.id,
       );
       return;
     }
@@ -104,19 +123,20 @@ Future<void> _handleRequest(HttpRequest request) async {
     final cancelMatch = RegExp(r'^/admin/orders/(\d+)/cancel$')
         .firstMatch(request.uri.path);
     if (request.method == 'POST' && cancelMatch != null) {
-      await _requireStaff(request);
-      await _cancelOrder(request, int.parse(cancelMatch.group(1)!));
+      final user = await _requireStaff(request);
+      await _cancelOrder(request, int.parse(cancelMatch.group(1)!), user.id);
       return;
     }
 
     final rejectItemMatch = RegExp(r'^/admin/orders/(\d+)/items/(\d+)/reject$')
         .firstMatch(request.uri.path);
     if (request.method == 'POST' && rejectItemMatch != null) {
-      await _requireStaff(request);
+      final user = await _requireStaff(request);
       await _rejectOrderItem(
         request.response,
         int.parse(rejectItemMatch.group(1)!),
         int.parse(rejectItemMatch.group(2)!),
+        user.id,
       );
       return;
     }
@@ -573,7 +593,7 @@ Future<void> _getCustomerOrders(HttpResponse response, int customerId) async {
   try {
     final rows = await connection.query(
       'SELECT o.id, o.codigo_retiro, o.cliente_nombre, o.cliente_curso, '
-      'o.metodo_pago, o.estado, o.motivo_cancelacion, pp.producto_id, '
+      'o.metodo_pago, o.estado, o.motivo_cancelacion, o.creado_en, pp.producto_id, '
       'pp.cantidad, pp.precio_unitario, p.nombre AS producto_nombre, '
       'p.descripcion AS producto_descripcion, p.emoji AS producto_emoji, '
       'p.color AS producto_color, c.nombre AS categoria '
@@ -599,6 +619,9 @@ Future<void> _getCustomerOrders(HttpResponse response, int customerId) async {
           'paymentMethod': row.fields['metodo_pago'],
           'status': row.fields['estado'],
           'cancellationReason': row.fields['motivo_cancelacion'],
+          'createdAt': (row.fields['creado_en'] as DateTime)
+              .toUtc()
+              .toIso8601String(),
           'items': <Map<String, dynamic>>[],
         },
       );
@@ -651,6 +674,133 @@ Future<void> _getOrderStatus(HttpRequest request, int orderId) async {
       'status': order['estado'],
       'cancellationReason': order['motivo_cancelacion'],
     });
+  } finally {
+    await connection.close();
+  }
+}
+
+Future<void> _getFilteredHistory(HttpRequest request) async {
+  final start = request.uri.queryParameters['fechaInicio'];
+  final end = request.uri.queryParameters['fechaFin'];
+  final category = request.uri.queryParameters['categoria'];
+  final search = request.uri.queryParameters['search']?.trim();
+  final where = <String>['o.estado IN (?, ?)'];
+  final parameters = <Object?>['entregado', 'cancelado'];
+
+  if (start != null && start.isNotEmpty) {
+    where.add('o.creado_en >= ?');
+    parameters.add('$start 00:00:00');
+  }
+  if (end != null && end.isNotEmpty) {
+    where.add('o.creado_en < DATE_ADD(?, INTERVAL 1 DAY)');
+    parameters.add('$end 00:00:00');
+  }
+  if (category != null && category.isNotEmpty && category != 'Todos') {
+    where.add('c.nombre = ?');
+    parameters.add(category);
+  }
+  if (search != null && search.isNotEmpty) {
+    where.add(
+      '(o.cliente_nombre LIKE ? OR u.email LIKE ? OR o.codigo_retiro LIKE ? '
+      'OR o.cliente_curso LIKE ?)',
+    );
+    final term = '%${search.replaceAll('%', r'\%')}%';
+    parameters.addAll([term, term, term, term]);
+  }
+
+  final connection = await _connectToDatabase();
+  try {
+    final rows = await connection.query(
+      'SELECT o.id, o.usuario_id, COALESCE(u.email, "") AS cliente_email, '
+      'o.creado_en, o.codigo_retiro, o.cliente_nombre, o.cliente_curso, '
+      'o.metodo_pago, o.estado, o.motivo_cancelacion, pp.producto_id, '
+      'pp.cantidad, pp.precio_unitario, pp.estado AS estado_item, '
+      'pp.motivo_rechazo, p.nombre AS producto_nombre, '
+      'c.nombre AS producto_categoria '
+      'FROM pedidos o '
+      'LEFT JOIN productos_pedido pp ON pp.pedido_id = o.id '
+      'LEFT JOIN productos p ON p.id = pp.producto_id '
+      'LEFT JOIN categorias c ON c.id = p.categoria_id '
+      'LEFT JOIN usuarios u ON u.id = o.usuario_id '
+      'WHERE ${where.join(' AND ')} '
+      'ORDER BY o.creado_en DESC, o.id DESC',
+      parameters,
+    );
+
+    final orders = <int, Map<String, dynamic>>{};
+    for (final row in rows) {
+      final id = _asInt(row.fields['id']);
+      final order = orders.putIfAbsent(
+        id,
+        () => {
+          'id': id,
+          'pickupCode': row.fields['codigo_retiro'] ?? id.toString(),
+          'customer': {
+            'id': _asInt(row.fields['usuario_id']),
+            'name': row.fields['cliente_nombre'],
+            'email': row.fields['cliente_email'],
+            'role': 'cliente',
+            'course': row.fields['cliente_curso'],
+          },
+          'paymentMethod': row.fields['metodo_pago'],
+          'status': row.fields['estado'],
+          'cancellationReason': row.fields['motivo_cancelacion'],
+          'createdAt': (row.fields['creado_en'] as DateTime)
+              .toUtc()
+              .toIso8601String(),
+          'total': 0.0,
+          'items': <Map<String, dynamic>>[],
+        },
+      );
+      if (row.fields['producto_id'] == null) continue;
+      final quantity = _asInt(row.fields['cantidad']);
+      final unitPrice = _asDouble(row.fields['precio_unitario']);
+      (order['items'] as List<Map<String, dynamic>>).add({
+        'product': {
+          'id': _asInt(row.fields['producto_id']),
+          'name': row.fields['producto_nombre'],
+          'category': row.fields['producto_categoria'],
+          'price': unitPrice,
+          'imageUrl': null,
+        },
+        'quantity': quantity,
+        'unitPrice': unitPrice,
+        'status': row.fields['estado_item'],
+        'rejectionReason': row.fields['motivo_rechazo'],
+      });
+      if (row.fields['estado_item'] == 'activo') {
+        order['total'] = (order['total'] as double) + quantity * unitPrice;
+      }
+    }
+    await _respond(request.response, HttpStatus.ok, orders.values.toList());
+  } finally {
+    await connection.close();
+  }
+}
+
+Future<void> _getEmployeeStats(HttpResponse response) async {
+  final connection = await _connectToDatabase();
+  try {
+    final rows = await connection.query(
+      'SELECT u.id, u.nombre, u.email, '
+      "SUM(CASE WHEN o.estado = 'entregado' THEN 1 ELSE 0 END) AS entregados, "
+      "SUM(CASE WHEN o.estado = 'cancelado' THEN 1 ELSE 0 END) AS cancelados "
+      "FROM usuarios u LEFT JOIN pedidos o ON o.empleado_id = u.id "
+      "WHERE u.rol = 'empleado' AND u.activo = TRUE "
+      'GROUP BY u.id, u.nombre, u.email ORDER BY u.nombre',
+    );
+    final stats = rows
+        .map(
+          (row) => {
+            'employeeId': _asInt(row.fields['id']),
+            'name': row.fields['nombre'],
+            'email': row.fields['email'],
+            'delivered': _asInt(row.fields['entregados']),
+            'cancelled': _asInt(row.fields['cancelados']),
+          },
+        )
+        .toList();
+    await _respond(response, HttpStatus.ok, stats);
   } finally {
     await connection.close();
   }
@@ -754,7 +904,11 @@ Future<void> _setOrderReady(HttpResponse response, int orderId) async {
   }
 }
 
-Future<void> _cancelOrder(HttpRequest request, int orderId) async {
+Future<void> _cancelOrder(
+  HttpRequest request,
+  int orderId,
+  int employeeId,
+) async {
   final body = await _readJsonBody(request);
   final reason = body['reason'];
   if (reason is! String ||
@@ -769,9 +923,10 @@ Future<void> _cancelOrder(HttpRequest request, int orderId) async {
   final connection = await _connectToDatabase();
   try {
     final result = await connection.query(
-      "UPDATE pedidos SET estado = 'cancelado', motivo_cancelacion = ? "
+      "UPDATE pedidos SET estado = 'cancelado', motivo_cancelacion = ?, "
+      'empleado_id = ? '
       "WHERE id = ? AND estado IN ('pendiente', 'en_preparacion')",
-      [reason.trim(), orderId],
+      [reason.trim(), employeeId, orderId],
     );
     if (result.affectedRows == 0) {
       throw const RequestException(
@@ -790,6 +945,7 @@ Future<void> _rejectOrderItem(
   HttpResponse response,
   int orderId,
   int productId,
+  int employeeId,
 ) async {
   final connection = await _connectToDatabase();
   var transactionStarted = false;
@@ -831,9 +987,10 @@ Future<void> _rejectOrderItem(
     if (allItemsRejected) {
       await connection.query(
         "UPDATE pedidos SET estado = 'cancelado', "
-        "motivo_cancelacion = 'Todos los productos no están disponibles.' "
+        "motivo_cancelacion = 'Todos los productos no están disponibles.', "
+        'empleado_id = ? '
         "WHERE id = ?",
-        [orderId],
+        [employeeId, orderId],
       );
     }
     await connection.query('COMMIT');
@@ -851,13 +1008,17 @@ Future<void> _rejectOrderItem(
   }
 }
 
-Future<void> _markOrderDelivered(HttpResponse response, int orderId) async {
+Future<void> _markOrderDelivered(
+  HttpResponse response,
+  int orderId,
+  int employeeId,
+) async {
   final connection = await _connectToDatabase();
   try {
     final result = await connection.query(
-      "UPDATE pedidos SET estado = 'entregado' "
+      "UPDATE pedidos SET estado = 'entregado', empleado_id = ? "
       "WHERE id = ? AND estado = 'listo'",
-      [orderId],
+      [employeeId, orderId],
     );
     if (result.affectedRows == 0) {
       throw const RequestException(

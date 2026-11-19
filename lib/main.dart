@@ -10,6 +10,7 @@ import 'pages/gestion_empleados_screen.dart';
 import 'pages/login_page.dart';
 import 'pages/order_history_page.dart';
 import 'pages/payment_page.dart';
+import 'pages/product_detail_page.dart';
 import 'pages/tablero_buffet_screen.dart';
 import 'services/api_service.dart';
 import 'widgets/product_card.dart';
@@ -24,7 +25,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // ignore: use_full_hex_values_for_flutter_colors
-    const brandColor = Color(0x0F76F6);
+    const brandColor = Color(0xFF0F76F6);
 
     return MaterialApp(
       title: 'Al Toque Pedidos',
@@ -64,8 +65,7 @@ void _showStaffArea(BuildContext context, AuthSession session) {
         onManageEmployees: session.isAdmin
             ? () => navigator.push(
                 MaterialPageRoute<void>(
-                  builder: (_) =>
-                      GestionEmpleadosScreen(onSignOut: onSignOut),
+                  builder: (_) => GestionEmpleadosScreen(onSignOut: onSignOut),
                 ),
               )
             : null,
@@ -166,6 +166,25 @@ class _CatalogPageState extends State<CatalogPage> {
     });
   }
 
+  void _openProductDetail(Product product) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => ProductDetailPage(
+          product: product,
+          onAdd: (quantity) {
+            setState(() {
+              _cartItems.update(
+                product,
+                (current) => current + quantity,
+                ifAbsent: () => quantity,
+              );
+            });
+          },
+        ),
+      ),
+    );
+  }
+
   void _openCart() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -261,39 +280,31 @@ class _CatalogPageState extends State<CatalogPage> {
         ),
       ),
       appBar: AppBar(
-        title: Row(
-          children: [
-            Builder(
-              builder: (context) => IconButton(
-                tooltip: 'Abrir menú',
-                onPressed: () => Scaffold.of(context).openDrawer(),
-                padding: EdgeInsets.zero,
-                icon: Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.16),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: ClipOval(
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
+        backgroundColor: const Color(0xFFF9FBFF),
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: Builder(
+          builder: (context) => IconButton(
+            tooltip: 'Abrir menú',
+            onPressed: () => Scaffold.of(context).openDrawer(),
+            icon: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFF0877F9), width: 2),
+              ),
+              child: ClipOval(
+                child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
               ),
             ),
-            const SizedBox(width: 10),
-            const Text('Al Toque'),
-          ],
+          ),
+        ),
+        titleSpacing: 0,
+        title: const Text(
+          'Al Toque',
+          style: TextStyle(
+            color: Color(0xFF0877F9),
+            fontWeight: FontWeight.w900,
+          ),
         ),
         actions: [
           IconButton(
@@ -318,10 +329,60 @@ class _CatalogPageState extends State<CatalogPage> {
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Container(
+              height: 118,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0877F9), Color(0xFF2E9EF5)],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Stack(
+                children: [
+                  const Positioned(
+                    left: 18,
+                    top: 18,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'CLÁSICO DEL BUFFET',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'Lo rico,\nlisto para vos.',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            height: 1.05,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Positioned(
+                    right: 12,
+                    bottom: -8,
+                    child: Text('🍽️', style: TextStyle(fontSize: 82)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
             TextField(
               onChanged: (value) {
                 setState(() {
@@ -329,13 +390,21 @@ class _CatalogPageState extends State<CatalogPage> {
                 });
               },
               decoration: InputDecoration(
-                hintText: 'Buscar productos...',
+                hintText: '¿Qué querés pedir hoy?',
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: Color(0xFFE1E7EF)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: Color(0xFFE1E7EF)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: Color(0xFF0877F9)),
                 ),
               ),
             ),
@@ -426,16 +495,52 @@ class _CatalogPageState extends State<CatalogPage> {
                             crossAxisCount: 2,
                             crossAxisSpacing: 14,
                             mainAxisSpacing: 14,
-                            childAspectRatio: 0.68,
+                            childAspectRatio: 0.70,
                           ),
                       itemBuilder: (context, index) {
                         final product = visibleProducts[index];
-                        return ProductCard(product, () => _addToCart(product));
+                        return ProductCard(
+                          product,
+                          () => _addToCart(product),
+                          onOpen: () => _openProductDetail(product),
+                        );
                       },
                     ),
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: NavigationBar(
+        height: 68,
+        backgroundColor: Colors.white,
+        indicatorColor: const Color(0xFFE8F2FF),
+        selectedIndex: 0,
+        onDestinationSelected: (index) {
+          if (index == 2) _openCart();
+          if (index == 3) _openOrderHistory();
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Inicio',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.grid_view_outlined),
+            selectedIcon: Icon(Icons.grid_view),
+            label: 'Categorías',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.shopping_bag_outlined),
+            selectedIcon: Icon(Icons.shopping_bag),
+            label: 'Pedido',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Mis pedidos',
+          ),
+        ],
       ),
     );
   }

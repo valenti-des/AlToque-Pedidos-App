@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'gestion_empleados_screen.dart';
+import 'historial_buffet_screen.dart';
+import 'estadisticas_empleados_screen.dart';
 import 'tablero_buffet_screen.dart';
 
 class AdminHomeScreen extends StatelessWidget {
@@ -51,6 +53,28 @@ class AdminHomeScreen extends StatelessWidget {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => GestionEmpleadosScreen(onSignOut: onSignOut),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _AdminActionCard(
+            icon: Icons.history,
+            title: 'Historial del buffet',
+            description: 'Consultar pedidos entregados y cancelados',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const HistorialBuffetScreen(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _AdminActionCard(
+            icon: Icons.analytics_outlined,
+            title: 'Estadísticas de empleados',
+            description: 'Medir entregas, cancelaciones y efectividad',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const EstadisticasEmpleadosScreen(),
               ),
             ),
           ),

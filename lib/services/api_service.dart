@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../basedate.dart';
 import '../models/auth_session.dart';
 import '../models/empleado.dart';
+import '../models/employee_stats.dart';
 import '../models/order.dart';
 import '../models/pedido.dart';
 import '../models/product.dart';
@@ -162,6 +163,41 @@ class ApiService {
         .toList();
   }
 
+  Future<List<Pedido>> getBuffetHistory({
+    DateTime? startDate,
+    DateTime? endDate,
+    String? category,
+    String? search,
+  }) async {
+    final query = <String, String>{};
+    if (startDate != null) {
+      query['fechaInicio'] =
+          '${startDate.year}-${startDate.month.toString().padLeft(2, '0')}-${startDate.day.toString().padLeft(2, '0')}';
+    }
+    if (endDate != null) {
+      query['fechaFin'] =
+          '${endDate.year}-${endDate.month.toString().padLeft(2, '0')}-${endDate.day.toString().padLeft(2, '0')}';
+    }
+    if (category != null && category.isNotEmpty) {
+      query['categoria'] = category;
+    }
+    if (search != null && search.trim().isNotEmpty) {
+      query['search'] = search.trim();
+    }
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/buffet/historial')
+        .replace(queryParameters: query);
+    final response = await _client
+        .get(uri, headers: _authorizedHeaders())
+        .timeout(const Duration(seconds: 10));
+    final data = _decodeResponse(response);
+    if (data is! List) {
+      throw const FormatException('La API devolvió un historial inválido.');
+    }
+    return data
+        .map((item) => Pedido.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<Order> refreshOrderStatus(Order order) async {
     final trackingToken = order.trackingToken;
     if (trackingToken == null) {
@@ -259,6 +295,24 @@ class ApiService {
 
     return data
         .map((item) => Empleado.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<EmployeeStats>> getEmployeeStats() async {
+    final response = await _client
+        .get(
+          Uri.parse('${ApiConfig.baseUrl}/api/admin/estadisticas-empleados'),
+          headers: _authorizedHeaders(),
+        )
+        .timeout(const Duration(seconds: 10));
+    final data = _decodeResponse(response);
+    if (data is! List) {
+      throw const FormatException(
+        'La API devolvió estadísticas de empleados inválidas.',
+      );
+    }
+    return data
+        .map((item) => EmployeeStats.fromJson(item as Map<String, dynamic>))
         .toList();
   }
 

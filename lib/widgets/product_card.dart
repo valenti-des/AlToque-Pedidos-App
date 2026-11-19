@@ -3,82 +3,105 @@ import 'package:flutter/material.dart';
 import '../models/product.dart';
 
 class ProductCard extends StatelessWidget {
-  const ProductCard(this.product, this.onAdd, {super.key});
+  const ProductCard(this.product, this.onAdd, {this.onOpen, super.key});
 
   final Product product;
   final VoidCallback onAdd;
+  final VoidCallback? onOpen;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      elevation: 1,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            flex: 5,
-            child: Container(
-              color: product.color,
-              alignment: Alignment.center,
-              child: Text(
-                product.emoji,
-                style: const TextStyle(fontSize: 64),
+    return InkWell(
+      onTap: onOpen,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFE5EAF0)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF1A365D).withValues(alpha: 0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              flex: 5,
+              child: Container(
+                color: product.color,
+                alignment: Alignment.center,
+                child: Text(
+                  product.emoji,
+                  style: const TextStyle(fontSize: 58),
+                ),
               ),
             ),
-          ),
-          Expanded(
-            flex: 6,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    product.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
+            Expanded(
+              flex: 6,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      product.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: const Color(0xFF667085)),
+                    ),
+                    const Spacer(),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            product.price,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
+                                  color: const Color(0xFF0877F9),
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
                         ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    product.description,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.black54,
+                        InkWell(
+                          onTap: onAdd,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0877F9),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.add,
+                              color: Colors.white,
+                              size: 21,
+                            ),
+                          ),
                         ),
-                  ),
-                  const Spacer(),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          product.price,
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    color: Theme.of(context).colorScheme.primary,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                        ),
-                      ),
-                      IconButton.filled(
-                        onPressed: onAdd,
-                        tooltip: 'Agregar ${product.name}',
-                        visualDensity: VisualDensity.compact,
-                        icon: const Icon(Icons.add, size: 20),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
