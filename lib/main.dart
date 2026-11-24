@@ -28,7 +28,7 @@ class MyApp extends StatelessWidget {
     const brandColor = Color(0xFF0F76F6);
 
     return MaterialApp(
-      title: 'Al Toque Pedidos',
+      title: 'AlToque Pedidos',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: brandColor),
         scaffoldBackgroundColor: const Color(0xFFFFFBF7),
