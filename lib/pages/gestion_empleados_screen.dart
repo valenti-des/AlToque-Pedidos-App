@@ -315,10 +315,6 @@ class _GestionEmpleadosScreenState extends State<GestionEmpleadosScreen> {
                   else
                     for (final employee in _employees)
                       Card(
-                        color: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
                         child: ListTile(
                           leading: const CircleAvatar(
                             child: Icon(Icons.person_outline),

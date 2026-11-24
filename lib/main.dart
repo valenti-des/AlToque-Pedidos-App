@@ -13,6 +13,7 @@ import 'pages/payment_page.dart';
 import 'pages/product_detail_page.dart';
 import 'pages/tablero_buffet_screen.dart';
 import 'services/api_service.dart';
+import 'theme/app_theme.dart';
 import 'widgets/product_card.dart';
 
 void main() {
@@ -24,16 +25,9 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ignore: use_full_hex_values_for_flutter_colors
-    const brandColor = Color(0xFF0F76F6);
-
     return MaterialApp(
       title: 'AlToque Pedidos',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: brandColor),
-        scaffoldBackgroundColor: const Color(0xFFFFFBF7),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light,
       home: LoginPage(
         onCustomerContinue: _showCatalog,
         onStaffLogin: _showStaffArea,
@@ -259,7 +253,7 @@ class _CatalogPageState extends State<CatalogPage> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'Al Toque',
+                      'AlToque Pedidos',
                       style: Theme.of(context).textTheme.titleLarge
                           ?.copyWith(fontWeight: FontWeight.bold),
                     ),
@@ -290,7 +284,7 @@ class _CatalogPageState extends State<CatalogPage> {
             icon: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFF0877F9), width: 2),
+                border: Border.all(color: AppColors.primary, width: 2),
               ),
               child: ClipOval(
                 child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
@@ -300,9 +294,9 @@ class _CatalogPageState extends State<CatalogPage> {
         ),
         titleSpacing: 0,
         title: const Text(
-          'Al Toque',
+          'AlToque Pedidos',
           style: TextStyle(
-            color: Color(0xFF0877F9),
+            color: AppColors.primary,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -338,7 +332,7 @@ class _CatalogPageState extends State<CatalogPage> {
               width: double.infinity,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF0877F9), Color(0xFF2E9EF5)],
+                  colors: [AppColors.primary, Color(0xFF2E9EF5)],
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                 ),
@@ -396,15 +390,15 @@ class _CatalogPageState extends State<CatalogPage> {
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFFE1E7EF)),
+                  borderSide: const BorderSide(color: AppColors.border),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFFE1E7EF)),
+                  borderSide: const BorderSide(color: AppColors.border),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFF0877F9)),
+                  borderSide: const BorderSide(color: AppColors.primary),
                 ),
               ),
             ),
@@ -418,7 +412,7 @@ class _CatalogPageState extends State<CatalogPage> {
             Text(
               'Elegí algo rico para disfrutar',
               style: Theme.of(context).textTheme.bodyMedium
-                  ?.copyWith(color: Colors.black54),
+                  ?.copyWith(color: AppColors.muted),
             ),
             const SizedBox(height: 18),
             SizedBox(
@@ -453,7 +447,7 @@ class _CatalogPageState extends State<CatalogPage> {
                 Text(
                   '${visibleProducts.length} productos',
                   style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: Colors.black54),
+                      ?.copyWith(color: AppColors.muted),
                 ),
               ],
             ),

@@ -124,10 +124,6 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                       final date = order.createdAt;
 
                       return Card(
-                        color: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
                         child: ListTile(
                           leading: const CircleAvatar(
                             child: Icon(Icons.receipt_long_outlined),

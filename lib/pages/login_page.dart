@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/auth_session.dart';
 import '../services/api_service.dart';
+import '../theme/app_theme.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({
@@ -187,117 +188,133 @@ class _LoginPageState extends State<LoginPage> {
           padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: ClipOval(
-                      child: Image.asset(
-                        'assets/images/logo.png',
-                        width: 96,
-                        height: 96,
-                        fit: BoxFit.cover,
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            width: 76,
+                            height: 76,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Al Toque',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineMedium
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _isStaffMode
-                        ? 'Acceso para el personal del buffet'
-                        : 'Identifícate para realizar tu pedido',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyLarge
-                        ?.copyWith(color: Colors.black54),
-                  ),
-                  const SizedBox(height: 24),
-                  SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment(
-                        value: false,
-                        label: Text('Alumno'),
-                        icon: Icon(Icons.school_outlined),
+                      const SizedBox(height: 20),
+                      Text(
+                        'AlToque Pedidos',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w900,
+                            ),
                       ),
-                      ButtonSegment(
-                        value: true,
-                        label: Text('Personal'),
-                        icon: Icon(Icons.badge_outlined),
+                      const SizedBox(height: 8),
+                      Text(
+                        _isStaffMode
+                            ? 'Acceso para el personal del buffet'
+                            : 'Identifícate para realizar tu pedido',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyLarge
+                            ?.copyWith(color: AppColors.muted),
                       ),
-                    ],
-                    selected: {_isStaffMode},
-                    onSelectionChanged: (selection) {
-                      setState(() {
-                        _isStaffMode = selection.first;
-                        _errorMessage = null;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  if (!_isStaffMode) ...[
-                    SegmentedButton<String>(
-                      segments: const [
-                        ButtonSegment(value: 'login', label: Text('Ingresar')),
-                        ButtonSegment(
-                          value: 'register',
-                          label: Text('Registrarme'),
+                      const SizedBox(height: 24),
+                      SegmentedButton<bool>(
+                        segments: const [
+                          ButtonSegment(
+                            value: false,
+                            label: Text('Alumno'),
+                            icon: Icon(Icons.school_outlined),
+                          ),
+                          ButtonSegment(
+                            value: true,
+                            label: Text('Personal'),
+                            icon: Icon(Icons.badge_outlined),
+                          ),
+                        ],
+                        selected: {_isStaffMode},
+                        onSelectionChanged: (selection) {
+                          setState(() {
+                            _isStaffMode = selection.first;
+                            _errorMessage = null;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      if (!_isStaffMode) ...[
+                        SegmentedButton<String>(
+                          segments: const [
+                            ButtonSegment(
+                              value: 'login',
+                              label: Text('Ingresar'),
+                            ),
+                            ButtonSegment(
+                              value: 'register',
+                              label: Text('Registrarme'),
+                            ),
+                          ],
+                          selected: {_customerMode},
+                          onSelectionChanged: (selection) {
+                            setState(() {
+                              _customerMode = selection.first;
+                              _errorMessage = null;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                      if (_isStaffMode) ...[
+                        _emailField(),
+                        const SizedBox(height: 14),
+                        _passwordField(isRegistration: false),
+                      ] else ...[
+                        if (_customerMode == 'register') ...[
+                          _nameField(),
+                          const SizedBox(height: 14),
+                        ],
+                        _emailField(),
+                        const SizedBox(height: 14),
+                        _passwordField(
+                          isRegistration: _customerMode == 'register',
                         ),
                       ],
-                      selected: {_customerMode},
-                      onSelectionChanged: (selection) {
-                        setState(() {
-                          _customerMode = selection.first;
-                          _errorMessage = null;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                  if (_isStaffMode) ...[
-                    _emailField(),
-                    const SizedBox(height: 14),
-                    _passwordField(isRegistration: false),
-                  ] else ...[
-                    if (_customerMode == 'register') ...[
-                      _nameField(),
-                      const SizedBox(height: 14),
-                    ],
-                    _emailField(),
-                    const SizedBox(height: 14),
-                    _passwordField(isRegistration: _customerMode == 'register'),
-                  ],
-                  if (_errorMessage != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      _errorMessage!,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
+                      if (_errorMessage != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          _errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 20),
+                      FilledButton(
+                        onPressed: _isSigningIn ? null : submit,
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: _isSigningIn
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(buttonLabel),
                       ),
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-                  FilledButton(
-                    onPressed: _isSigningIn ? null : submit,
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    child: _isSigningIn
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(buttonLabel),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),

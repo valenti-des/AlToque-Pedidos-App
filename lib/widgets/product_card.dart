@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/product.dart';
+import '../theme/app_theme.dart';
 
 class ProductCard extends StatelessWidget {
   const ProductCard(this.product, this.onAdd, {this.onOpen, super.key});
@@ -18,7 +19,7 @@ class ProductCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFE5EAF0)),
+          border: Border.all(color: AppColors.border),
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF1A365D).withValues(alpha: 0.06),
@@ -62,7 +63,7 @@ class ProductCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall
-                          ?.copyWith(color: const Color(0xFF667085)),
+                          ?.copyWith(color: AppColors.muted),
                     ),
                     const Spacer(),
                     Row(
@@ -72,7 +73,7 @@ class ProductCard extends StatelessWidget {
                             product.price,
                             style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(
-                                  color: const Color(0xFF0877F9),
+                                  color: AppColors.primary,
                                   fontWeight: FontWeight.w800,
                                 ),
                           ),
@@ -84,7 +85,7 @@ class ProductCard extends StatelessWidget {
                             width: 38,
                             height: 38,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF0877F9),
+                              color: AppColors.primary,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Icon(

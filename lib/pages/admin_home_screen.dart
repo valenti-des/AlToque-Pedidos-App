@@ -99,8 +99,6 @@ class _AdminActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-    color: Colors.white,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     child: ListTile(
       contentPadding: const EdgeInsets.all(16),
       leading: CircleAvatar(child: Icon(icon)),

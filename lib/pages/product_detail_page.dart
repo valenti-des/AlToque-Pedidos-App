@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/product.dart';
+import '../theme/app_theme.dart';
 
 class ProductDetailPage extends StatefulWidget {
   const ProductDetailPage({
@@ -22,13 +23,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFD),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
             Container(
               height: 310,
-              color: const Color(0xFF0877F9),
+              color: AppColors.primary,
               child: Stack(
                 children: [
                   Positioned(
@@ -62,12 +63,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     height: 230,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: Colors.white, width: 4),
-                        boxShadow: const [
+                        boxShadow: [
                           BoxShadow(
-                            color: Color(0x22000000),
+                            color: AppColors.ink.withValues(alpha: 0.14),
                             blurRadius: 18,
                             offset: Offset(0, 8),
                           ),
@@ -107,7 +108,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         Text(
                           widget.product.price,
                           style: const TextStyle(
-                            color: Color(0xFF0877F9),
+                            color: AppColors.primary,
                             fontSize: 21,
                             fontWeight: FontWeight.w900,
                           ),
@@ -118,7 +119,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     Text(
                       widget.product.description,
                       style: const TextStyle(
-                        color: Color(0xFF667085),
+                        color: AppColors.muted,
                         fontSize: 15,
                         height: 1.45,
                       ),
@@ -127,7 +128,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     Container(
                       height: 58,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF1F4F8),
+                        color: AppColors.paleBlue,
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: Row(
@@ -167,7 +168,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                           Navigator.of(context).pop();
                         },
                         style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF0877F9),
+                          backgroundColor: AppColors.primary,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),

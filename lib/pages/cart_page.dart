@@ -56,7 +56,6 @@ class _CartPageState extends State<CartPage> {
               children: [
                 for (final entry in productsInCart) ...[
                   Card(
-                    color: Colors.white,
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12,

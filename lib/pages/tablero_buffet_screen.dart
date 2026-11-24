@@ -496,8 +496,6 @@ class _OrderCard extends StatelessWidget {
       onDoubleTap: onDoubleTap,
       child: Card(
         margin: const EdgeInsets.only(bottom: 12),
-        color: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

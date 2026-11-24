@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/employee_stats.dart';
 import '../services/api_service.dart';
+import '../theme/app_theme.dart';
 
 class EstadisticasEmpleadosScreen extends StatefulWidget {
   const EstadisticasEmpleadosScreen({super.key});
@@ -102,7 +103,7 @@ class _EstadisticasEmpleadosScreenState
                                   label: 'Efectividad',
                                   value:
                                       '${stat.effectiveness.toStringAsFixed(1)}%',
-                                  color: const Color(0xFF0877F9),
+                                  color: AppColors.primary,
                                 ),
                               ),
                             ],
