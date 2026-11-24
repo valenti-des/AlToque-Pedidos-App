@@ -1,8 +1,9 @@
 # Inicio local sin contraseña de MySQL
 
 Esta configuracion es solo para desarrollo en una computadora de confianza.
-La API solo escucha en loopback: el emulador Android de esta PC puede acceder
-por `10.0.2.2`, pero un teléfono físico u otro equipo de la red no.
+Por defecto, la API solo escucha en loopback: el emulador Android de esta PC
+puede acceder por `10.0.2.2`, pero un teléfono físico u otro equipo de la red
+no. Para pruebas desde un teléfono, sigue la sección al final de este archivo.
 Para hacer pedidos, los alumnos deben crear una cuenta o iniciar sesión; no
 se aceptan pedidos como invitado.
 
@@ -42,3 +43,38 @@ sesión del personal; el acceso a gestión de empleados sigue limitado al
 administrador.
 
 VS Code detiene la API automáticamente al finalizar la sesión de depuración.
+
+## Probar desde un teléfono en la misma red Wi-Fi
+
+La APK se conecta a la API; la API sigue conectándose a MySQL en esta
+computadora. No abras el puerto de MySQL en la red. Esta configuración usa
+HTTP sin cifrar y es solo para una red privada y de confianza; no expongas el
+puerto de la API a Internet.
+
+1. Conecta el teléfono y la computadora a la misma Wi-Fi. En la computadora,
+   ejecuta `ipconfig` y anota la dirección IPv4 del adaptador Wi-Fi (por
+   ejemplo, `192.168.1.25`; no uses `127.0.0.1`).
+2. Si la API ya está corriendo desde VS Code u otra terminal, detenla primero.
+   Desde la carpeta del proyecto, inicia la API para la red local:
+
+   ```powershell
+   .\backend\tool\stop_local_api.ps1
+   $env:API_LISTEN_LAN = 'true'
+   .\backend\tool\run_local_api.ps1
+   ```
+
+   La API escuchará en la red local en el puerto `8080`. MySQL seguirá
+   accesible solo desde la computadora.
+3. En otra PowerShell abierta en la carpeta del proyecto, reemplaza la IP de
+   ejemplo por la que anotaste y genera la APK de prueba:
+
+   ```powershell
+   flutter build apk --debug --dart-define=API_BASE_URL=http://192.168.1.25:8080
+   ```
+
+   El archivo queda en
+   `build\app\outputs\flutter-apk\app-debug.apk`. Instálalo en el teléfono y
+   deja MySQL y la API encendidos mientras la uses.
+4. Si el teléfono no conecta, permite el puerto TCP `8080` en el Firewall de
+   Windows solo para redes privadas. Comprueba también que la Wi-Fi no tenga
+   aislamiento entre dispositivos.

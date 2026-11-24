@@ -22,8 +22,16 @@ Future<void> main() async {
     await connection.close();
   }
 
-  final server = await HttpServer.bind(InternetAddress.loopbackIPv4, port);
-  stdout.writeln('API local disponible en http://127.0.0.1:$port');
+  final listenOnLan = Platform.environment['API_LISTEN_LAN'] == 'true';
+  final server = await HttpServer.bind(
+    listenOnLan ? InternetAddress.anyIPv4 : InternetAddress.loopbackIPv4,
+    port,
+  );
+  stdout.writeln(
+    listenOnLan
+        ? 'API escuchando en la red local en el puerto $port'
+        : 'API local disponible en http://127.0.0.1:$port',
+  );
   await for (final request in server) {
     _handleRequest(request);
   }

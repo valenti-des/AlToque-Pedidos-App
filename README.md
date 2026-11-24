@@ -185,8 +185,8 @@ Para iniciar la API local y Flutter juntos desde VS Code, consulta
 - **Emulador Android en la misma PC:** desde la carpeta del proyecto ejecuta
   `flutter run`. La dirección predeterminada `http://10.0.2.2:8080` apunta a la
   PC anfitriona.
-- **Teléfono físico:** no disponible en el modo local actual. La API solo
-  acepta conexiones desde esta PC y su emulador Android.
+- **Teléfono físico:** para probar desde la misma Wi-Fi, sigue la sección
+  de [conexión desde un teléfono](LOCAL_DEV.md).
 - El cliente ingresa nombre y curso. El personal inicia sesión con su correo y
   contraseña. En la gestión de empleados, usa doble toque en “Agregar empleado”;
   en el tablero, doble toque sobre una comanda abre su detalle.
