@@ -47,6 +47,7 @@ class Pedido {
     required this.total,
     required this.items,
     required this.createdAt,
+    this.statusUpdatedAt,
     this.cancellationReason,
   });
 
@@ -63,10 +64,12 @@ class Pedido {
           };
     final rawItems = json['items'];
     final createdAt = json['createdAt'];
+    final statusUpdatedAt = json['statusUpdatedAt'];
     if (json['id'] is! int ||
         json['pickupCode'] is! String ||
         rawItems is! List ||
         createdAt is! String ||
+        (statusUpdatedAt != null && statusUpdatedAt is! String) ||
         json['total'] is! num) {
       throw const FormatException('Los datos del pedido son inválidos.');
     }
@@ -82,6 +85,9 @@ class Pedido {
           .map((item) => ItemPedido.fromJson(item as Map<String, dynamic>))
           .toList(),
       createdAt: DateTime.parse(createdAt),
+      statusUpdatedAt: statusUpdatedAt == null
+          ? null
+          : DateTime.parse(statusUpdatedAt as String),
       cancellationReason: json['cancellationReason'] as String?,
     );
   }
@@ -94,16 +100,17 @@ class Pedido {
   final double total;
   final List<ItemPedido> items;
   final DateTime createdAt;
+  final DateTime? statusUpdatedAt;
   final String? cancellationReason;
 
   String get customerName => cliente.nombre;
   String get course => cliente.cursoODni ?? '';
-  String get displayId => 'ORD-${createdAt.year}-${id.toString().padLeft(3, '0')}';
+  String get displayId =>
+      'ORD-${createdAt.year}-${id.toString().padLeft(3, '0')}';
   String get formattedPickupCode =>
       pickupCode.startsWith('#BT-') ? pickupCode : '#BT-$pickupCode';
   bool get isPending =>
-      status == EstadoPedido.pendiente ||
-      status == EstadoPedido.enPreparacion;
+      status == EstadoPedido.pendiente || status == EstadoPedido.enPreparacion;
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -114,6 +121,7 @@ class Pedido {
     'total': total,
     'items': items.map((item) => item.toJson()).toList(),
     'createdAt': createdAt.toUtc().toIso8601String(),
+    'statusUpdatedAt': statusUpdatedAt?.toUtc().toIso8601String(),
     'cancellationReason': cancellationReason,
   };
 }

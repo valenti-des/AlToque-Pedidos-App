@@ -164,12 +164,11 @@ class _HistorialBuffetScreenState extends State<HistorialBuffetScreen> {
                           title: Text(order.formattedPickupCode),
                           subtitle: Text(
                             '${order.customerName} · ${order.status.label}\n'
-                            '${order.items.length} productos · \$${order.total.toStringAsFixed(2)}',
+                            '${order.items.length} productos · \$${order.total.toStringAsFixed(2)}\n'
+                            'Realizado: ${_formatDateTime(order.createdAt).replaceAll('\n', ' ')}\n'
+                            'Estado actualizado: ${_formatDateTime(order.statusUpdatedAt)}',
                           ),
                           isThreeLine: true,
-                          trailing: Text(
-                            '${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year}',
-                          ),
                         ),
                       );
                     },
@@ -179,4 +178,14 @@ class _HistorialBuffetScreenState extends State<HistorialBuffetScreen> {
       ),
     );
   }
+}
+
+String _formatDateTime(DateTime? value) {
+  if (value == null) return 'Sin fecha';
+  final date = value.toLocal();
+  final day = date.day.toString().padLeft(2, '0');
+  final month = date.month.toString().padLeft(2, '0');
+  final hour = date.hour.toString().padLeft(2, '0');
+  final minute = date.minute.toString().padLeft(2, '0');
+  return '$day/$month/${date.year}\n$hour:$minute';
 }

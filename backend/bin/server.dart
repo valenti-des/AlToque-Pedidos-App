@@ -580,6 +580,13 @@ Future<void> _createOrder(HttpRequest request) async {
         [orderId, entry.key, entry.value, productPrices[entry.key]],
       );
     }
+    final timestamps = await connection.query(
+      'SELECT creado_en, estado_actualizado_en FROM pedidos WHERE id = ?',
+      [orderId],
+    );
+    if (timestamps.isEmpty) {
+      throw StateError('No se pudieron leer las fechas del pedido creado.');
+    }
     await connection.query('COMMIT');
     transactionStarted = false;
     _broadcastOrdersChanged();
@@ -587,6 +594,13 @@ Future<void> _createOrder(HttpRequest request) async {
       'id': orderId,
       'pickupCode': pickupCode,
       'trackingToken': trackingToken,
+      'createdAt': (timestamps.first.fields['creado_en'] as DateTime)
+          .toUtc()
+          .toIso8601String(),
+      'statusUpdatedAt':
+          (timestamps.first.fields['estado_actualizado_en'] as DateTime)
+              .toUtc()
+              .toIso8601String(),
     });
   } catch (_) {
     if (transactionStarted) await connection.query('ROLLBACK');
@@ -601,7 +615,8 @@ Future<void> _getCustomerOrders(HttpResponse response, int customerId) async {
   try {
     final rows = await connection.query(
       'SELECT o.id, o.codigo_retiro, o.cliente_nombre, o.cliente_curso, '
-      'o.metodo_pago, o.estado, o.motivo_cancelacion, o.creado_en, pp.producto_id, '
+      'o.metodo_pago, o.estado, o.motivo_cancelacion, o.creado_en, '
+      'o.estado_actualizado_en, pp.producto_id, '
       'pp.cantidad, pp.precio_unitario, p.nombre AS producto_nombre, '
       'p.descripcion AS producto_descripcion, p.emoji AS producto_emoji, '
       'p.color AS producto_color, c.nombre AS categoria '
@@ -628,6 +643,9 @@ Future<void> _getCustomerOrders(HttpResponse response, int customerId) async {
           'status': row.fields['estado'],
           'cancellationReason': row.fields['motivo_cancelacion'],
           'createdAt': (row.fields['creado_en'] as DateTime)
+              .toUtc()
+              .toIso8601String(),
+          'statusUpdatedAt': (row.fields['estado_actualizado_en'] as DateTime)
               .toUtc()
               .toIso8601String(),
           'items': <Map<String, dynamic>>[],
@@ -664,6 +682,7 @@ Future<void> _getOrderStatus(HttpRequest request, int orderId) async {
   try {
     final rows = await connection.query(
       'SELECT codigo_retiro, estado, motivo_cancelacion, '
+      'creado_en, estado_actualizado_en, '
       'token_seguimiento_hash FROM pedidos WHERE id = ?',
       [orderId],
     );
@@ -681,6 +700,10 @@ Future<void> _getOrderStatus(HttpRequest request, int orderId) async {
       'pickupCode': order['codigo_retiro'],
       'status': order['estado'],
       'cancellationReason': order['motivo_cancelacion'],
+      'createdAt': (order['creado_en'] as DateTime).toUtc().toIso8601String(),
+      'statusUpdatedAt': (order['estado_actualizado_en'] as DateTime)
+          .toUtc()
+          .toIso8601String(),
     });
   } finally {
     await connection.close();
@@ -721,7 +744,8 @@ Future<void> _getFilteredHistory(HttpRequest request) async {
     final rows = await connection.query(
       'SELECT o.id, o.usuario_id, COALESCE(u.email, "") AS cliente_email, '
       'o.creado_en, o.codigo_retiro, o.cliente_nombre, o.cliente_curso, '
-      'o.metodo_pago, o.estado, o.motivo_cancelacion, pp.producto_id, '
+      'o.metodo_pago, o.estado, o.estado_actualizado_en, '
+      'o.motivo_cancelacion, pp.producto_id, '
       'pp.cantidad, pp.precio_unitario, pp.estado AS estado_item, '
       'pp.motivo_rechazo, p.nombre AS producto_nombre, '
       'c.nombre AS producto_categoria '
@@ -754,6 +778,9 @@ Future<void> _getFilteredHistory(HttpRequest request) async {
           'status': row.fields['estado'],
           'cancellationReason': row.fields['motivo_cancelacion'],
           'createdAt': (row.fields['creado_en'] as DateTime)
+              .toUtc()
+              .toIso8601String(),
+          'statusUpdatedAt': (row.fields['estado_actualizado_en'] as DateTime)
               .toUtc()
               .toIso8601String(),
           'total': 0.0,
@@ -821,7 +848,8 @@ Future<void> _getAdminOrders(HttpResponse response) async {
       "SELECT o.id, o.usuario_id, COALESCE(u.email, '') AS cliente_email, "
       'o.creado_en, '
       'o.codigo_retiro, o.cliente_nombre, o.cliente_curso, '
-      'o.metodo_pago, o.estado, o.motivo_cancelacion, pp.producto_id, '
+      'o.metodo_pago, o.estado, o.estado_actualizado_en, '
+      'o.motivo_cancelacion, pp.producto_id, '
       'pp.cantidad, pp.precio_unitario, pp.estado AS estado_item, '
       'pp.motivo_rechazo, p.nombre AS producto_nombre, '
       'c.nombre AS producto_categoria '
@@ -855,6 +883,9 @@ Future<void> _getAdminOrders(HttpResponse response) async {
           'status': row.fields['estado'],
           'cancellationReason': row.fields['motivo_cancelacion'],
           'createdAt': (row.fields['creado_en'] as DateTime)
+              .toUtc()
+              .toIso8601String(),
+          'statusUpdatedAt': (row.fields['estado_actualizado_en'] as DateTime)
               .toUtc()
               .toIso8601String(),
           'total': 0.0,
@@ -893,7 +924,8 @@ Future<void> _setOrderReady(HttpResponse response, int orderId) async {
   final connection = await _connectToDatabase();
   try {
     final result = await connection.query(
-      "UPDATE pedidos SET estado = 'listo' "
+      "UPDATE pedidos SET estado = 'listo', "
+      'estado_actualizado_en = CURRENT_TIMESTAMP '
       "WHERE id = ? AND estado IN ('pendiente', 'en_preparacion') "
       "AND EXISTS (SELECT 1 FROM productos_pedido "
       "WHERE pedido_id = ? AND estado = 'activo')",
@@ -932,7 +964,7 @@ Future<void> _cancelOrder(
   try {
     final result = await connection.query(
       "UPDATE pedidos SET estado = 'cancelado', motivo_cancelacion = ?, "
-      'empleado_id = ? '
+      'empleado_id = ?, estado_actualizado_en = CURRENT_TIMESTAMP '
       "WHERE id = ? AND estado IN ('pendiente', 'en_preparacion')",
       [reason.trim(), employeeId, orderId],
     );
@@ -996,7 +1028,7 @@ Future<void> _rejectOrderItem(
       await connection.query(
         "UPDATE pedidos SET estado = 'cancelado', "
         "motivo_cancelacion = 'Todos los productos no están disponibles.', "
-        'empleado_id = ? '
+        'empleado_id = ?, estado_actualizado_en = CURRENT_TIMESTAMP '
         "WHERE id = ?",
         [employeeId, orderId],
       );
@@ -1024,7 +1056,8 @@ Future<void> _markOrderDelivered(
   final connection = await _connectToDatabase();
   try {
     final result = await connection.query(
-      "UPDATE pedidos SET estado = 'entregado', empleado_id = ? "
+      "UPDATE pedidos SET estado = 'entregado', empleado_id = ?, "
+      'estado_actualizado_en = CURRENT_TIMESTAMP '
       "WHERE id = ? AND estado = 'listo'",
       [employeeId, orderId],
     );

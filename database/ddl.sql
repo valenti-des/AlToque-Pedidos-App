@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
   token_seguimiento_hash CHAR(64) NULL,
   motivo_cancelacion VARCHAR(255) NULL,
   creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  estado_actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY ix_pedidos_usuario (usuario_id),
   KEY ix_pedidos_estado (estado, creado_en),

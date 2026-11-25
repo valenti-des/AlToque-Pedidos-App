@@ -121,7 +121,6 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                         (total, quantity) => total + quantity,
                       );
                       final status = _statusLabel(order.status);
-                      final date = order.createdAt;
 
                       return Card(
                         child: ListTile(
@@ -130,9 +129,10 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                           ),
                           title: Text('Pedido ${order.pickupCode}'),
                           subtitle: Text(
-                            '${date == null ? '' : '${date.day}/${date.month}/${date.year} · '}'
+                            'Realizado: ${_formatDateTime(order.createdAt)}\n'
                             '$itemCount productos · ${order.paymentMethod} · $status',
                           ),
+                          isThreeLine: true,
                           trailing: const Icon(Icons.chevron_right),
                           onTap: () {
                             showDialog<void>(
@@ -150,6 +150,12 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                                     const SizedBox(height: 12),
                                     Text('Pago: ${order.paymentMethod}'),
                                     Text('Estado: $status'),
+                                    Text(
+                                      'Realizado: ${_formatDateTime(order.createdAt)}',
+                                    ),
+                                    Text(
+                                      'Estado actualizado: ${_formatDateTime(order.statusUpdatedAt)}',
+                                    ),
                                     if (order.cancellationReason != null)
                                       Text(
                                         'Motivo: ${order.cancellationReason}',
@@ -184,3 +190,13 @@ String _statusLabel(String status) => switch (status) {
   'en_preparacion' => 'En preparación',
   _ => 'Pendiente',
 };
+
+String _formatDateTime(DateTime? value) {
+  if (value == null) return 'Sin fecha';
+  final date = value.toLocal();
+  final day = date.day.toString().padLeft(2, '0');
+  final month = date.month.toString().padLeft(2, '0');
+  final hour = date.hour.toString().padLeft(2, '0');
+  final minute = date.minute.toString().padLeft(2, '0');
+  return '$day/$month/${date.year} $hour:$minute';
+}

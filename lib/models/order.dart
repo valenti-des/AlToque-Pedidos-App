@@ -16,6 +16,7 @@ class Order {
     this.status = 'pendiente',
     this.cancellationReason,
     this.createdAt,
+    this.statusUpdatedAt,
   }) : items = Map<Product, int>.unmodifiable(items);
 
   final int id;
@@ -28,6 +29,7 @@ class Order {
   final String status;
   final String? cancellationReason;
   final DateTime? createdAt;
+  final DateTime? statusUpdatedAt;
 
   factory Order.fromJson(Map<String, dynamic> json) {
     final rawItems = json['items'];
@@ -65,6 +67,9 @@ class Order {
       createdAt: json['createdAt'] is String
           ? DateTime.tryParse(json['createdAt'] as String)
           : null,
+      statusUpdatedAt: json['statusUpdatedAt'] is String
+          ? DateTime.tryParse(json['statusUpdatedAt'] as String)
+          : null,
     );
   }
 
@@ -74,6 +79,7 @@ class Order {
     String? status,
     String? cancellationReason,
     DateTime? createdAt,
+    DateTime? statusUpdatedAt,
   }) => Order(
     id: id,
     items: items,
@@ -84,6 +90,7 @@ class Order {
     course: course,
     status: status ?? this.status,
     cancellationReason: cancellationReason ?? this.cancellationReason,
-    createdAt: createdAt,
+    createdAt: createdAt ?? this.createdAt,
+    statusUpdatedAt: statusUpdatedAt ?? this.statusUpdatedAt,
   );
 }

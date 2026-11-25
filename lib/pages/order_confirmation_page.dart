@@ -109,6 +109,11 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                   const SizedBox(height: 12),
                   Text('Forma de pago: ${_order.paymentMethod}'),
                   const SizedBox(height: 8),
+                  Text('Realizado: ${_formatDateTime(_order.createdAt)}'),
+                  Text(
+                    'Estado actualizado: ${_formatDateTime(_order.statusUpdatedAt)}',
+                  ),
+                  const SizedBox(height: 8),
                   const Text(
                     'Presenta este código en el mostrador durante el recreo.',
                     textAlign: TextAlign.center,
@@ -135,3 +140,13 @@ String _statusLabel(String status) => switch (status) {
   'en_preparacion' => 'En preparación',
   _ => 'Pedido pendiente',
 };
+
+String _formatDateTime(DateTime? value) {
+  if (value == null) return 'Sin fecha';
+  final date = value.toLocal();
+  final day = date.day.toString().padLeft(2, '0');
+  final month = date.month.toString().padLeft(2, '0');
+  final hour = date.hour.toString().padLeft(2, '0');
+  final minute = date.minute.toString().padLeft(2, '0');
+  return '$day/$month/${date.year} $hour:$minute';
+}

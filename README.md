@@ -108,6 +108,9 @@ empleados.
    base ya tiene las columnas `metodo_pago` y `codigo_retiro` de la API local
    anterior, ejecuta una sola vez `database/migrate_admin_modules.sql`. Si parte
    del esquema original, ejecuta antes `database/migrate_local_api.sql`.
+   En una base existente, ejecuta también una vez
+   `database/migrate_order_status_timestamps.sql` para guardar la fecha del
+   último cambio de estado.
 3. En ambos casos, ejecuta `database/seed_local.sql` para cargar el menú y el
    usuario técnico que registra pedidos.
 4. Crea un usuario MySQL dedicado para la API; reemplaza la contraseña por una

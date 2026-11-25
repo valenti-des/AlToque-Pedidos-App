@@ -11,6 +11,8 @@ void main() {
       'course': '3ro A',
       'paymentMethod': 'En el buffet',
       'status': 'listo',
+      'createdAt': '2026-06-15T12:00:00.000Z',
+      'statusUpdatedAt': '2026-06-15T12:30:00.000Z',
       'cancellationReason': null,
       'items': [
         {
@@ -28,6 +30,7 @@ void main() {
 
     expect(order.id, 42);
     expect(order.status, 'listo');
+    expect(order.statusUpdatedAt, DateTime.parse('2026-06-15T12:30:00.000Z'));
     expect(order.items.length, 1);
     expect(order.items.keys.single.name, 'Papas con cheddar');
     expect(order.items.values.single, 2);

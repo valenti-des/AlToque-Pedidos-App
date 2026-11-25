@@ -143,6 +143,8 @@ class ApiService {
       trackingToken: data['trackingToken'] as String,
       customerName: customerName,
       course: '',
+      createdAt: DateTime.tryParse(data['createdAt'] as String),
+      statusUpdatedAt: DateTime.tryParse(data['statusUpdatedAt'] as String),
     );
   }
 
@@ -218,6 +220,8 @@ class ApiService {
     return order.copyWith(
       status: data['status'] as String,
       cancellationReason: data['cancellationReason'] as String?,
+      createdAt: DateTime.tryParse(data['createdAt'] as String),
+      statusUpdatedAt: DateTime.tryParse(data['statusUpdatedAt'] as String),
     );
   }
 

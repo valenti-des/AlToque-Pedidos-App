@@ -19,6 +19,7 @@ void main() {
       'status': 'listo',
       'total': 7600.0,
       'createdAt': '2026-06-15T12:00:00.000Z',
+      'statusUpdatedAt': '2026-06-15T12:30:00.000Z',
       'cancellationReason': null,
       'items': [
         {
@@ -41,11 +42,13 @@ void main() {
     expect(order.items.single.producto.nombre, 'Papas con cheddar');
     expect(order.modalidadPago, ModalidadPago.efectivo);
     expect(order.status, EstadoPedido.listo);
+    expect(order.statusUpdatedAt, DateTime.parse('2026-06-15T12:30:00.000Z'));
     expect(order.displayId, 'ORD-2026-042');
     expect(order.formattedPickupCode, '#BT-000042');
 
     final restored = Pedido.fromJson(order.toJson());
     expect(restored.status, EstadoPedido.listo);
+    expect(restored.statusUpdatedAt, order.statusUpdatedAt);
     expect(restored.total, 7600);
     expect(restored.items.single.subtotal, 7600);
   });

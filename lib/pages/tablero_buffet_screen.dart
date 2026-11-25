@@ -262,6 +262,13 @@ class _TableroBuffetScreenState extends State<TableroBuffetScreen> {
                         : '${selectedOrder.customerName} · ${selectedOrder.course}',
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Realizado: ${_formatDateTime(selectedOrder.createdAt)}',
+                  ),
+                  Text(
+                    'Estado actualizado: ${_formatDateTime(selectedOrder.statusUpdatedAt)}',
+                  ),
                   const SizedBox(height: 12),
                   for (final item in selectedOrder.items)
                     Card(
@@ -516,6 +523,10 @@ class _OrderCard extends StatelessWidget {
                 ],
               ),
               Text(order.formattedPickupCode),
+              Text('Realizado: ${_formatDateTime(order.createdAt)}'),
+              Text(
+                'Estado actualizado: ${_formatDateTime(order.statusUpdatedAt)}',
+              ),
               Text(
                 order.course.isEmpty
                     ? order.customerName
@@ -603,6 +614,16 @@ class _ErrorState extends StatelessWidget {
 }
 
 String _statusLabel(EstadoPedido status) => status.label;
+
+String _formatDateTime(DateTime? value) {
+  if (value == null) return 'Sin fecha';
+  final date = value.toLocal();
+  final day = date.day.toString().padLeft(2, '0');
+  final month = date.month.toString().padLeft(2, '0');
+  final hour = date.hour.toString().padLeft(2, '0');
+  final minute = date.minute.toString().padLeft(2, '0');
+  return '$day/$month/${date.year} $hour:$minute';
+}
 
 String _formatPrice(double amount) {
   final value = amount.round().toString();
