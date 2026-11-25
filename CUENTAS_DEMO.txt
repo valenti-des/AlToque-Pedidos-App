@@ -1,0 +1,12 @@
+Cuentas de demostracion para iniciar sesion en Al Toque
+
+Administrador
+Correo: admin.demo@al-toque.local
+Contrasena: Admin123!
+
+Empleado
+Correo: empleado.demo@al-toque.local
+Contrasena: Empleado123!
+
+Son cuentas locales de demostracion, no cuentas de Gmail.
+Para crearlas o restablecerlas, ejecuta backend/bin/create_demo_accounts.dart.
