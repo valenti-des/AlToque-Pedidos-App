@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/auth_session.dart';
+import 'api_settings_page.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 
@@ -28,6 +29,16 @@ class _LoginPageState extends State<LoginPage> {
   String _customerMode = 'login';
   bool _hidePassword = true;
   bool _isSigningIn = false;
+
+  Future<void> _openApiSettings() async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(builder: (_) => const ApiSettingsPage()),
+    );
+    if (!mounted || saved != true) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Dirección de API guardada.')));
+  }
 
   Future<void> _signInCustomer() async {
     if (!_formKey.currentState!.validate()) return;
@@ -196,6 +207,14 @@ class _LoginPageState extends State<LoginPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: IconButton(
+                          tooltip: 'Configurar conexión',
+                          onPressed: _openApiSettings,
+                          icon: const Icon(Icons.settings_ethernet),
+                        ),
+                      ),
                       Center(
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(20),

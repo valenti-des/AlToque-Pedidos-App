@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'basedate.dart';
 import 'data/products.dart';
 
 import 'models/auth_session.dart';
@@ -16,7 +17,9 @@ import 'services/api_service.dart';
 import 'theme/app_theme.dart';
 import 'widgets/product_card.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ApiConfig.initialize();
   runApp(const MyApp());
 }
 

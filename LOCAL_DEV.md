@@ -12,6 +12,8 @@ se aceptan pedidos como invitado.
    `database/seed_local.sql`.
    Si ya existía y todavía no tiene los campos de alumnos y pedidos, ejecuta
    una sola vez `database/migrate_admin_modules.sql`.
+   Si todavía no tiene la columna del empleado que entrega o cancela pedidos,
+   ejecuta una vez `database/migrate_order_analytics.sql`.
    Si la base ya existía antes de esta actualización, ejecuta también una vez
    `database/migrate_order_status_timestamps.sql`.
 3. En MySQL Workbench, conectado con una cuenta administradora, ejecuta
@@ -70,16 +72,19 @@ puerto de la API a Internet.
 
    La API escuchará en la red local en el puerto `8080`. MySQL seguirá
    accesible solo desde la computadora.
-3. En otra PowerShell abierta en la carpeta del proyecto, reemplaza la IP de
-   ejemplo por la que anotaste y genera la APK de prueba:
+3. En otra PowerShell abierta en la carpeta del proyecto, genera la APK de
+   prueba:
 
    ```powershell
-   flutter build apk --debug --dart-define=API_BASE_URL=http://192.168.1.25:8080
+   flutter build apk --debug
    ```
 
    El archivo queda en
-   `build\app\outputs\flutter-apk\app-debug.apk`. Instálalo en el teléfono y
-   deja MySQL y la API encendidos mientras la uses.
+   `build\app\outputs\flutter-apk\app-debug.apk`. Instálalo en el teléfono.
+   Antes de iniciar sesión, toca el icono de configuración y escribe
+   `http://IP_DE_TU_PC:8080`. Puedes cambiar esta dirección desde la app cuando
+   cambies de red; no hace falta volver a compilar el APK. Deja MySQL y la API
+   encendidos mientras la uses.
 4. Si el teléfono no conecta, permite el puerto TCP `8080` en el Firewall de
    Windows solo para redes privadas. Comprueba también que la Wi-Fi no tenga
    aislamiento entre dispositivos.
