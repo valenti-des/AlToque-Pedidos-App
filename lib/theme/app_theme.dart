@@ -4,6 +4,7 @@ class AppColors {
   const AppColors._();
 
   static const primary = Color(0xFF1477F2);
+  static const notification = Color(0xFFFF5B61);
   static const background = Color(0xFFF2F5FB);
   static const surface = Colors.white;
   static const paleBlue = Color(0xFFE8F1FF);

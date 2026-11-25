@@ -229,6 +229,36 @@ class _CatalogPageState extends State<CatalogPage> {
     );
   }
 
+  Widget _cartNavigationIcon({required bool selected}) {
+    final hasProducts = _cartCount > 0;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: hasProducts ? AppColors.paleBlue : Colors.transparent,
+        shape: BoxShape.circle,
+        boxShadow: hasProducts
+            ? [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.24),
+                  blurRadius: 14,
+                  spreadRadius: 1,
+                ),
+              ]
+            : null,
+      ),
+      child: Badge(
+        isLabelVisible: hasProducts,
+        backgroundColor: AppColors.notification,
+        textColor: Colors.white,
+        label: Text(_cartCount > 99 ? '99+' : '$_cartCount'),
+        child: Icon(
+          selected ? Icons.shopping_bag : Icons.shopping_bag_outlined,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final visibleProducts = _filteredProducts;
@@ -300,27 +330,6 @@ class _CatalogPageState extends State<CatalogPage> {
             fontWeight: FontWeight.w900,
           ),
         ),
-        actions: [
-          IconButton(
-            tooltip: 'Mis pedidos',
-            onPressed: _openOrderHistory,
-            icon: const Icon(Icons.receipt_long_outlined),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Center(
-              child: Badge(
-                isLabelVisible: _cartCount > 0,
-                label: Text('$_cartCount'),
-                child: IconButton(
-                  tooltip: 'Productos agregados',
-                  onPressed: _openCart,
-                  icon: const Icon(Icons.shopping_bag_outlined),
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
       body: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -510,28 +519,23 @@ class _CatalogPageState extends State<CatalogPage> {
         indicatorColor: const Color(0xFFE8F2FF),
         selectedIndex: 0,
         onDestinationSelected: (index) {
-          if (index == 2) _openCart();
-          if (index == 3) _openOrderHistory();
+          if (index == 1) _openCart();
+          if (index == 2) _openOrderHistory();
         },
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home),
             label: 'Inicio',
           ),
           NavigationDestination(
-            icon: Icon(Icons.grid_view_outlined),
-            selectedIcon: Icon(Icons.grid_view),
-            label: 'Categorías',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.shopping_bag_outlined),
-            selectedIcon: Icon(Icons.shopping_bag),
+            icon: _cartNavigationIcon(selected: false),
+            selectedIcon: _cartNavigationIcon(selected: true),
             label: 'Pedido',
           ),
           NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
+            icon: const Icon(Icons.confirmation_number_outlined),
+            selectedIcon: const Icon(Icons.confirmation_number),
             label: 'Mis pedidos',
           ),
         ],
