@@ -1,6 +1,4 @@
-import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:mysql1/mysql1.dart';
 
@@ -8,6 +6,8 @@ import 'package:al_toque_local_api/security.dart';
 
 const _adminEmail = 'admin.demo@al-toque.local';
 const _employeeEmail = 'empleado.demo@al-toque.local';
+const _adminPassword = 'Admin123!';
+const _employeePassword = 'Empleado123!';
 
 Future<void> main() async {
   if (Platform.environment['ALLOW_DEMO_ACCOUNTS'] != 'true') {
@@ -34,8 +34,8 @@ Future<void> main() async {
     throw const FormatException('DB_PORT debe ser un puerto válido.');
   }
 
-  final adminPassword = _generatePassword();
-  final employeePassword = _generatePassword();
+  final adminPassword = _adminPassword;
+  final employeePassword = _employeePassword;
   final adminHash = hashPassword(adminPassword);
   final employeeHash = hashPassword(employeePassword);
   final connection = await MySqlConnection.connect(
@@ -80,7 +80,7 @@ Future<void> main() async {
     ..writeln('Contraseña: $adminPassword')
     ..writeln('Empleado: $_employeeEmail')
     ..writeln('Contraseña: $employeePassword')
-    ..writeln('Al volver a ejecutar el comando se generan claves nuevas.');
+    ..writeln('Las claves son fijas para cuentas de demostración local.');
 }
 
 Future<void> _upsertDemoAccount(
@@ -123,11 +123,4 @@ Future<void> _upsertDemoAccount(
     'VALUES (?, ?, ?, TRUE, ?)',
     [email, name, role, passwordHash],
   );
-}
-
-String _generatePassword() {
-  final random = Random.secure();
-  return base64Url
-      .encode(List<int>.generate(24, (_) => random.nextInt(256)))
-      .replaceAll('=', '');
 }

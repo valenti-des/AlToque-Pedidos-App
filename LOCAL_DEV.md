@@ -12,6 +12,8 @@ se aceptan pedidos como invitado.
    `database/seed_local.sql`.
    Si ya existía y todavía no tiene los campos de alumnos y pedidos, ejecuta
    una sola vez `database/migrate_admin_modules.sql`.
+   Si la base ya existía antes de esta actualización, ejecuta también una vez
+   `database/migrate_order_status_timestamps.sql`.
 3. En MySQL Workbench, conectado con una cuenta administradora, ejecuta
    `database/setup_local_passwordless.sql`. El script crea o actualiza el
    usuario local `al_toque_api` sin contraseña y le asigna los permisos
@@ -28,10 +30,13 @@ se aceptan pedidos como invitado.
    Remove-Item Env:ALLOW_DEMO_ACCOUNTS
    ```
 
-   El comando muestra un correo fijo para cada rol y contraseñas aleatorias.
-   No guarda las contraseñas en archivos; al ejecutarlo otra vez, las
-   contraseñas de esas cuentas se regeneran. Si configuraste MySQL con clave,
-   define también `DB_PASSWORD` antes de ejecutarlo.
+   El comando crea estas cuentas demo locales con contraseñas fijas:
+
+   - Administrador: `admin.demo@al-toque.local` / `Admin123!`
+   - Empleado: `empleado.demo@al-toque.local` / `Empleado123!`
+
+   Las contraseñas quedan almacenadas en la base de datos como hashes PBKDF2.
+   Si configuraste MySQL con clave, define también `DB_PASSWORD` antes de ejecutarlo.
 5. Abre la carpeta del proyecto en VS Code, selecciona **Al Toque (local)**
    en Run and Debug y presiona F5. VS Code inicia la API y, cuando comprueba
    la conexión con MySQL, abre Flutter.
