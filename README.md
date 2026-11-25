@@ -109,6 +109,9 @@ empleados.
    anterior, ejecuta una sola vez `database/migrate_admin_modules.sql`. Si parte
    del esquema original, ejecuta antes `database/migrate_local_api.sql`.
    En una base existente, ejecuta también una vez
+   `database/migrate_order_analytics.sql` para agregar el empleado que registra
+   la entrega o cancelación de un pedido.
+   En una base existente, ejecuta también una vez
    `database/migrate_order_status_timestamps.sql` para guardar la fecha del
    último cambio de estado.
 3. En ambos casos, ejecuta `database/seed_local.sql` para cargar el menú y el

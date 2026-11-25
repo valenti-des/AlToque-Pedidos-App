@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS productos (
 CREATE TABLE IF NOT EXISTS pedidos (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   usuario_id INT UNSIGNED NOT NULL,
+  empleado_id INT UNSIGNED NULL,
   cliente_nombre VARCHAR(100) NOT NULL DEFAULT '',
   cliente_curso VARCHAR(50) NOT NULL DEFAULT '',
   estado VARCHAR(30) NOT NULL DEFAULT 'pendiente',
@@ -56,10 +57,13 @@ CREATE TABLE IF NOT EXISTS pedidos (
   estado_actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY ix_pedidos_usuario (usuario_id),
+  KEY ix_pedidos_empleado (empleado_id),
   KEY ix_pedidos_estado (estado, creado_en),
   UNIQUE KEY uq_pedidos_codigo_retiro (codigo_retiro),
   CONSTRAINT fk_pedidos_usuario
-    FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
+    FOREIGN KEY (usuario_id) REFERENCES usuarios (id),
+  CONSTRAINT fk_pedidos_empleado
+    FOREIGN KEY (empleado_id) REFERENCES usuarios (id)
 ) ENGINE = InnoDB;
 
 CREATE TABLE IF NOT EXISTS productos_pedido (
